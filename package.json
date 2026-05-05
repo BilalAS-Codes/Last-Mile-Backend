@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --env-file=.env src/server.js",
+    "prod": "node src/server.js",
     "dev": "nodemon --env-file=.env src/server.js",
     "db:create": "node --env-file=.env src/database/createDb.js",
     "db:migrate": "node --env-file=.env node_modules/knex/bin/cli.js migrate:latest",
@@ -24,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.2.10",
     "morgan": "^1.10.1",
+    "nodemailer": "^8.0.7",
     "nodemon": "^3.1.14",
     "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",

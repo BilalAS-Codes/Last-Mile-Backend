@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const authRepository = require('./auth.repository');
+const { sendOTP } = require('../../utils/mail');
 
 
 class AuthService {
@@ -40,6 +41,34 @@ class AuthService {
 
     async getMe(userId) {
         return await authRepository.findById(userId);
+    }
+
+    async forgotPassword(email) {
+        const user = await authRepository.findByEmail(email);
+        console.log(user, 'user');
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+        await authRepository.updateOTP(email, otp, expiry);
+        await sendOTP(email, otp);
+        console.log(otp, 'otp');
+
+        return { message: 'OTP sent to email' };
+    }
+
+    async resetPassword(email, otp, newPassword) {
+        const user = await authRepository.verifyOTP(email, otp);
+        if (!user) {
+            throw new Error('Invalid or expired OTP');
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await authRepository.updatePassword(email, hashedPassword);
+        return { message: 'Password reset successful' };
     }
 }
 

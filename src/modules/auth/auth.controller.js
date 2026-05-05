@@ -37,6 +37,33 @@ class AuthController {
             next(err);
         }
     }
+
+    async forgotPassword(req, res, next) {
+        try {
+            const { email } = req.body;
+            console.log(email, 'email');
+            const result = await authService.forgotPassword(email);
+            res.status(200).json({
+                success: true,
+                ...result
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async resetPassword(req, res, next) {
+        try {
+            const { email, otp, newPassword } = req.body;
+            const result = await authService.resetPassword(email, otp, newPassword);
+            res.status(200).json({
+                success: true,
+                ...result
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
 }
 
 module.exports = new AuthController();

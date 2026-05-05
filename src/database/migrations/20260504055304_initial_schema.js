@@ -18,6 +18,8 @@ exports.up = function(knex) {
       table.decimal('rating', 3, 2).defaultTo(5.0);
       table.decimal('cash_in_hand', 14, 2).defaultTo(0);
       table.jsonb('company_details').nullable();
+      table.string('otp').nullable();
+      table.timestamp('otp_expiry').nullable();
       table.timestamps(true, true);
     })
     .createTable('orders', (table) => {

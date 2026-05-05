@@ -2,8 +2,16 @@ const Joi = require('joi');
 
 const createOrderSchema = Joi.object({
     body: Joi.object({
-        pickup_address: Joi.string().required(),
-        delivery_address: Joi.string().required(),
+        pickup_address: Joi.object({
+            lat: Joi.number().required(),
+            long: Joi.number().required(),
+            address: Joi.string().required(),
+        }).required(),
+        delivery_address: Joi.object({
+            lat: Joi.number().required(),
+            long: Joi.number().required(),
+            address: Joi.string().required(),
+        }).required(),
         customer_name: Joi.string().required(),
         customer_phone: Joi.string().required(),
         is_cod: Joi.boolean().default(false),

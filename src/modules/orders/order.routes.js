@@ -12,10 +12,9 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *     Address:
  *       type: object
  *       properties:
- *         street: { type: string, example: '123 Fashion Ave' }
- *         city: { type: string, example: 'New York' }
- *         state: { type: string, example: 'NY' }
- *         zip: { type: string, example: '10001' }
+ *         address: { type: string, example: '123 Fashion Ave, New York, NY 10001' }
+ *         lat: { type: number, example: 40.7128 }
+ *         long: { type: number, example: -74.0060 }
  *     CreateOrderRequest:
  *       type: object
  *       required: [tracking_id, pickup_address, delivery_address, customer_name, customer_phone]

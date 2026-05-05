@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('./auth.controller');
 const validate = require('../../middleware/validate.middleware');
-const { registerSchema, loginSchema } = require('./auth.validation');
+const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } = require('./auth.validation');
 const { protect } = require('../../middleware/auth.middleware');
 
 /**
@@ -44,8 +44,8 @@ const { protect } = require('../../middleware/auth.middleware');
  *           example: password123
  *         role:
  *           type: string
- *           enum: [ADMIN, CLIENT, DRIVER]
- *           example: CLIENT
+ *           enum: [Admin, Client, Driver]
+ *           example: Client
  */
 
 /**
@@ -87,6 +87,48 @@ router.post('/register', validate(registerSchema), authController.register);
  *         description: Invalid credentials
  */
 router.post('/login', validate(loginSchema), authController.login);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Request password reset OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: OTP sent
+ */
+router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password using OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string, format: email }
+ *               otp: { type: string, example: '123456' }
+ *               newPassword: { type: string, format: password }
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ */
+router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
 /**
  * @swagger
