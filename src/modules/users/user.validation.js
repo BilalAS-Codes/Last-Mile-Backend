@@ -20,6 +20,7 @@ const updateUserSchema = Joi.object({
         active: Joi.boolean().optional(),
         vehicle_number: Joi.string().optional(),
         vehicle_type: Joi.string().optional(),
+        phone: Joi.string().optional(),
     }).min(1)
 });
 

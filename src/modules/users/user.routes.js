@@ -60,10 +60,13 @@ router.get('/drivers', protect, userController.listDrivers);
  *           schema:
  *             type: object
  *             properties:
- *               name: { type: string }
- *               email: { type: string, format: email }
- *               role: { type: string, enum: [Admin, Client, Driver] }
- *               active: { type: boolean }
+ *               name: { type: string, example: 'John Doe' }
+ *               email: { type: string, format: email, example: 'john@example.com' }
+ *               phone: { type: string, example: '+919876543210' }
+ *               role: { type: string, enum: [admin, client, driver], example: 'driver' }
+ *               active: { type: boolean, example: true }
+ *               vehicle_number: { type: string, example: 'ABC-1234' }
+ *               vehicle_type: { type: string, example: 'Bike' }
  *     responses:
  *       200:
  *         description: User updated

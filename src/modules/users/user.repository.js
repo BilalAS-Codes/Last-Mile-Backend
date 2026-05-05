@@ -19,6 +19,12 @@ class UserRepository {
         return result.rows[0];
     }
 
+    async findById(id) {
+        const query = 'SELECT id, email, role, name, vehicle_number, vehicle_type, active FROM users WHERE id = $1';
+        const result = await db.query(query, [id]);
+        return result.rows[0];
+    }
+
     async update(id, userData) {
         const fields = Object.keys(userData);
         const values = Object.values(userData);

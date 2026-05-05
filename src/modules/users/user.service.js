@@ -14,6 +14,17 @@ class UserService {
     }
 
     async updateUser(id, userData) {
+        const existingUser = await userRepository.findById(id);
+        if (!existingUser) {
+            throw new Error('User not found');
+        }
+
+        const role = userData.role || existingUser.role;
+
+        if ((userData.vehicle_number || userData.vehicle_type) && role !== 'driver') {
+            throw new Error('Vehicle information can only be updated for drivers');
+        }
+
         return await userRepository.update(id, userData);
     }
 
