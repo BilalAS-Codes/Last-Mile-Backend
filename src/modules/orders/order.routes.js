@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('./order.controller');
 const validate = require('../../middleware/validate.middleware');
+const upload = require('../../middleware/upload.middleware');
 const { createOrderSchema, assignDriverSchema, updateOrderStatusSchema } = require('./order.validation');
 const { protect, authorize } = require('../../middleware/auth.middleware');
 
@@ -17,9 +18,8 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *         long: { type: number, example: -74.0060 }
  *     CreateOrderRequest:
  *       type: object
- *       required: [tracking_id, pickup_address, delivery_address, customer_name, customer_phone]
+ *       required: [pickup_address, delivery_address, customer_name, customer_phone]
  *       properties:
- *         tracking_id: { type: string, example: 'LF-98231' }
  *         pickup_address: { $ref: '#/components/schemas/Address' }
  *         delivery_address: { $ref: '#/components/schemas/Address' }
  *         customer_name: { type: string, example: 'Alice Johnson' }
@@ -60,6 +60,30 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *         description: List of orders
  */
 router.post('/', protect, authorize('Admin', 'Client'), validate(createOrderSchema), orderController.create);
+
+/**
+ * @swagger
+ * /api/orders/bulk:
+ *   post:
+ *     summary: Bulk create orders via CSV
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Orders created successfully
+ */
+router.post('/bulk', protect, authorize('Admin', 'Client'), upload.single('file'), orderController.bulkCreate);
+
 router.get('/', protect, orderController.list);
 
 /**

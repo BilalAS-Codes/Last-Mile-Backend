@@ -18,6 +18,22 @@ class UserRepository {
         const result = await db.query(query, [active, id]);
         return result.rows[0];
     }
+
+    async update(id, userData) {
+        const fields = Object.keys(userData);
+        const values = Object.values(userData);
+        const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+        
+        const query = `UPDATE users SET ${setClause} WHERE id = $1 RETURNING id, email, role, name, active`;
+        const result = await db.query(query, [id, ...values]);
+        return result.rows[0];
+    }
+
+    async delete(id) {
+        const query = 'DELETE FROM users WHERE id = $1 RETURNING id';
+        const result = await db.query(query, [id]);
+        return result.rows[0];
+    }
 }
 
 module.exports = new UserRepository();

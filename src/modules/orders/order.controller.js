@@ -13,6 +13,21 @@ class OrderController {
         }
     }
 
+    async bulkCreate(req, res, next) {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'Please upload a CSV file' });
+            }
+            const result = await orderService.bulkCreateOrders(req.user.id, req.file.buffer);
+            res.status(201).json({
+                success: true,
+                ...result
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+
     async list(req, res, next) {
         try {
             const filters = req.query;
