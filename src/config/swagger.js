@@ -13,6 +13,10 @@ const options = {
         url: 'http://localhost:5000',
         description: 'Development server',
       },
+      {
+        url: 'https://last-mile-backend-m63f.onrender.com',
+        description: 'Production server',
+      }
     ],
     components: {
       securitySchemes: {
