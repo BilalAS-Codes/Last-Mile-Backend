@@ -20,7 +20,7 @@ class AuthRepository {
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id, email, role, name
         `;
-        const values = [email, password, role, name, vehicle_number, vehicle_type];
+        const values = [email, password, role.toLowerCase(), name, vehicle_number, vehicle_type];
         const result = await db.query(query, values);
         return result.rows[0];
     }

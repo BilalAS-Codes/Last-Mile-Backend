@@ -8,6 +8,10 @@ class AuthService {
     async register(userData) {
         const { password, ...rest } = userData;
         const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await authRepository.findByEmail(userData.email);
+        if (user) {
+            throw new Error('User already exists');
+        }
         return await authRepository.createUser({ ...rest, password: hashedPassword });
     }
 

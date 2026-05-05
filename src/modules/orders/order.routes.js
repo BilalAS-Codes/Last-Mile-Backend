@@ -59,7 +59,7 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *       200:
  *         description: List of orders
  */
-router.post('/', protect, authorize('Admin', 'Client'), validate(createOrderSchema), orderController.create);
+router.post('/', protect, authorize('admin', 'client'), validate(createOrderSchema), orderController.create);
 
 /**
  * @swagger
@@ -82,7 +82,7 @@ router.post('/', protect, authorize('Admin', 'Client'), validate(createOrderSche
  *       201:
  *         description: Orders created successfully
  */
-router.post('/bulk', protect, authorize('Admin', 'Client'), upload.single('file'), orderController.bulkCreate);
+router.post('/bulk', protect, authorize('admin', 'client'), upload.single('file'), orderController.bulkCreate);
 
 router.get('/', protect, orderController.list);
 
@@ -130,7 +130,7 @@ router.get('/driver/:driverId', protect, orderController.getDriverAssignments);
  *       200:
  *         description: Driver assigned
  */
-router.patch('/:id/assign', protect, authorize('Admin'), validate(assignDriverSchema), orderController.assign);
+router.patch('/:id/assign', protect, authorize('admin'), validate(assignDriverSchema), orderController.assign);
 
 /**
  * @swagger
@@ -158,6 +158,6 @@ router.patch('/:id/assign', protect, authorize('Admin'), validate(assignDriverSc
  *       200:
  *         description: Order status updated
  */
-router.patch('/:id/status', protect, authorize('Admin', 'Driver'), validate(updateOrderStatusSchema), orderController.updateStatus);
+router.patch('/:id/status', protect, authorize('admin', 'driver'), validate(updateOrderStatusSchema), orderController.updateStatus);
 
 module.exports = router;

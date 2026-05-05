@@ -16,7 +16,7 @@ const updateUserSchema = Joi.object({
     body: Joi.object({
         name: Joi.string().optional(),
         email: Joi.string().email().optional(),
-        role: Joi.string().valid('Admin', 'Client', 'Driver').optional(),
+        role: Joi.string().valid('admin', 'client', 'driver').optional(),
         active: Joi.boolean().optional(),
         vehicle_number: Joi.string().optional(),
         vehicle_type: Joi.string().optional(),

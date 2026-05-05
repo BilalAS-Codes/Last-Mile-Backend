@@ -6,8 +6,8 @@ const { settleFundsSchema, approveSettlementSchema } = require('./wallet.validat
 const { protect, authorize } = require('../../middleware/auth.middleware');
 
 router.get('/driver/:driverId', protect, walletController.getDriverWallet);
-router.post('/settle', protect, authorize('Driver'), validate(settleFundsSchema), walletController.settle);
-router.get('/settlements', protect, authorize('Admin'), walletController.listSettlements);
-router.patch('/settlements/:id', protect, authorize('Admin'), validate(approveSettlementSchema), walletController.approve);
+router.post('/settle', protect, authorize('driver'), validate(settleFundsSchema), walletController.settle);
+router.get('/settlements', protect, authorize('admin'), walletController.listSettlements);
+router.patch('/settlements/:id', protect, authorize('admin'), validate(approveSettlementSchema), walletController.approve);
 
 module.exports = router;

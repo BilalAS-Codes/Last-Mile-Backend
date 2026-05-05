@@ -2,9 +2,9 @@ const validate = (schema) => (req, res, next) => {
     const { body, query, params } = req;
     const dataToValidate = {};
 
-    if (Object.keys(body).length > 0) dataToValidate.body = body;
-    if (Object.keys(query).length > 0) dataToValidate.query = query;
-    if (Object.keys(params).length > 0) dataToValidate.params = params;
+    if (body && Object.keys(body).length > 0) dataToValidate.body = body;
+    if (query && Object.keys(query).length > 0) dataToValidate.query = query;
+    if (params && Object.keys(params).length > 0) dataToValidate.params = params;
 
     const { error, value } = schema.validate(dataToValidate, {
         abortEarly: false,

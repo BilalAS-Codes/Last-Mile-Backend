@@ -5,9 +5,9 @@ const registerSchema = Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().min(6).required(),
         name: Joi.string().required(),
-        role: Joi.string().valid('Admin', 'Client', 'Driver').required(),
-        vehicle_plate: Joi.string().when('role', { is: 'Driver', then: Joi.required() }),
-        vehicle_type: Joi.string().when('role', { is: 'Driver', then: Joi.required() }),
+        role: Joi.string().valid('admin', 'client', 'driver').required(),
+        vehicle_plate: Joi.string().when('role', { is: 'driver', then: Joi.required() }),
+        vehicle_type: Joi.string().when('role', { is: 'driver', then: Joi.required() }),
     })
 });
 
