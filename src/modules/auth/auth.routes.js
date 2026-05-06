@@ -44,8 +44,29 @@ const { protect } = require('../../middleware/auth.middleware');
  *           example: password123
  *         role:
  *           type: string
- *           enum: [Admin, Client, Driver]
- *           example: Client
+ *           enum: [admin, client, driver]
+ *           example: client
+ *         vehicle_plate:
+ *           type: string
+ *           example: ABC-1234
+ *         vehicle_type:
+ *           type: string
+ *           example: Bike
+ *         company_details:
+ *           type: object
+ *           properties:
+ *             phone: { type: string, example: '555-0199' }
+ *             companyName: { type: string, example: "Sarah's Boutique" }
+ *             billingEmail: { type: string, format: email, example: 'billing@sarah.com' }
+ *             feeType: { type: string, enum: [FIXED, PERCENTAGE], example: 'FIXED' }
+ *             feeValue: { type: number, example: 15 }
+ *             address:
+ *               type: object
+ *               properties:
+ *                 zip: { type: string, example: '10001' }
+ *                 city: { type: string, example: 'NYC' }
+ *                 state: { type: string, example: 'NY' }
+ *                 street: { type: string, example: '123 Fashion Ave' }
  */
 
 /**

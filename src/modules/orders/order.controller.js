@@ -6,6 +6,7 @@ class OrderController {
             const order = await orderService.createOrder(req.user.id, req.body);
             res.status(201).json({
                 success: true,
+                message: 'Order created successfully',
                 data: order
             });
         } catch (err) {
@@ -21,6 +22,7 @@ class OrderController {
             const result = await orderService.bulkCreateOrders(req.user.id, req.file.buffer);
             res.status(201).json({
                 success: true,
+                message: 'Bulk order processing completed',
                 ...result
             });
         } catch (err) {
@@ -34,10 +36,11 @@ class OrderController {
             const userRole = req.user.role.toUpperCase();
             if (userRole === 'CLIENT') filters.client_id = req.user.id;
             if (userRole === 'DRIVER') filters.driver_id = req.user.id;
-            
+
             const orders = await orderService.getOrders(filters);
             res.status(200).json({
                 success: true,
+                message: 'Orders fetched successfully',
                 data: orders
             });
         } catch (err) {
@@ -51,6 +54,7 @@ class OrderController {
             const orders = await orderService.getDriverAssignments(driverId);
             res.status(200).json({
                 success: true,
+                message: 'Driver assignments fetched successfully',
                 data: orders
             });
         } catch (err) {
@@ -65,6 +69,7 @@ class OrderController {
             const updated = await orderService.assignDriver(id, driver_id);
             res.status(200).json({
                 success: true,
+                message: 'Driver assigned successfully',
                 data: updated
             });
         } catch (err) {
@@ -78,6 +83,21 @@ class OrderController {
             const updated = await orderService.updateStatus(id, req.body);
             res.status(200).json({
                 success: true,
+                message: 'Order status updated successfully',
+                data: updated
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async markAsDelivered(req, res, next) {
+        try {
+            const { id } = req.params;
+            const updated = await orderService.markAsDelivered(id);
+            res.status(200).json({
+                success: true,
+                message: 'Order marked as delivered successfully',
                 data: updated
             });
         } catch (err) {

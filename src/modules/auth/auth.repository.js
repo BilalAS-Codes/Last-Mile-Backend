@@ -8,19 +8,34 @@ class AuthRepository {
     }
 
     async findById(id) {
-        const query = 'SELECT id, email, role, name, vehicle_number, vehicle_type, rating, active FROM users WHERE id = $1';
+        const query = 'SELECT id, email, role, name, company_details, vehicle_number, vehicle_type, rating, active FROM users WHERE id = $1';
         const result = await db.query(query, [id]);
         return result.rows[0];
     }
 
     async createUser(userData) {
-        const { email, password, role, name, vehicle_number, vehicle_type } = userData;
+        const { email, password, role, name, vehicle_number, vehicle_type, company_details } = userData;
+        
+        // Extract fee info if present in company_details
+        const fee_type = company_details?.feeType || 'FIXED';
+        const fee_value = company_details?.feeValue || 0;
+
         const query = `
-            INSERT INTO users (email, password, role, name, vehicle_number, vehicle_type)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (email, password, role, name, vehicle_number, vehicle_type, company_details, fee_type, fee_value)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id, email, role, name
         `;
-        const values = [email, password, role.toLowerCase(), name, vehicle_number, vehicle_type];
+        const values = [
+            email,
+            password,
+            role.toLowerCase(),
+            name,
+            vehicle_number,
+            vehicle_type,
+            company_details ? JSON.stringify(company_details) : null,
+            fee_type,
+            fee_value
+        ];
         const result = await db.query(query, values);
         return result.rows[0];
     }

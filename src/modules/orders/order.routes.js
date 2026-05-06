@@ -18,7 +18,7 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *         long: { type: number, example: -74.0060 }
  *     CreateOrderRequest:
  *       type: object
- *       required: [pickup_address, delivery_address, customer_name, customer_phone]
+ *       required: [pickup_address, delivery_address, customer_name, customer_phone, order_value, delivery_fee]
  *       properties:
  *         pickup_address: { $ref: '#/components/schemas/Address' }
  *         delivery_address: { $ref: '#/components/schemas/Address' }
@@ -159,5 +159,24 @@ router.patch('/:id/assign', protect, authorize('admin'), validate(assignDriverSc
  *         description: Order status updated
  */
 router.patch('/:id/status', protect, authorize('admin', 'driver'), validate(updateOrderStatusSchema), orderController.updateStatus);
+
+/**
+ * @swagger
+ * /api/orders/{id}/delivered:
+ *   patch:
+ *     summary: Mark order as delivered (Admin/Driver)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Order marked as delivered
+ */
+router.patch('/:id/delivered', protect, authorize('admin', 'driver'), orderController.markAsDelivered);
 
 module.exports = router;

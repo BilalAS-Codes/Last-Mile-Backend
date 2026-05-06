@@ -42,6 +42,20 @@ router.get('/drivers', protect, userController.listDrivers);
 
 /**
  * @swagger
+ * /api/users/clients:
+ *   get:
+ *     summary: List all clients (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of clients
+ */
+router.get('/clients', protect, authorize('Admin'), userController.listClients);
+
+/**
+ * @swagger
  * /api/users/{id}:
  *   put:
  *     summary: Update user details (Admin only)
@@ -67,11 +81,26 @@ router.get('/drivers', protect, userController.listDrivers);
  *               active: { type: boolean, example: true }
  *               vehicle_number: { type: string, example: 'ABC-1234' }
  *               vehicle_type: { type: string, example: 'Bike' }
+ *               company_details:
+ *                 type: object
+ *                 properties:
+ *                   phone: { type: string }
+ *                   companyName: { type: string }
+ *                   billingEmail: { type: string }
+ *                   feeType: { type: string, enum: [FIXED, PERCENTAGE] }
+ *                   feeValue: { type: number }
+ *                   address:
+ *                     type: object
+ *                     properties:
+ *                       zip: { type: string }
+ *                       city: { type: string }
+ *                       state: { type: string }
+ *                       street: { type: string }
  *     responses:
  *       200:
  *         description: User updated
  */
-router.put('/:id', protect, authorize('Admin'), validate(updateUserSchema), userController.update);
+router.put('/:id', protect, validate(updateUserSchema), userController.update);
 
 /**
  * @swagger

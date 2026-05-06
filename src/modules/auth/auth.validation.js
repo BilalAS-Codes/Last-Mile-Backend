@@ -2,33 +2,80 @@ const Joi = require('joi');
 
 const registerSchema = Joi.object({
     body: Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().min(6).required(),
-        name: Joi.string().required(),
-        role: Joi.string().valid('admin', 'client', 'driver').required(),
-        vehicle_plate: Joi.string().when('role', { is: 'driver', then: Joi.required() }),
-        vehicle_type: Joi.string().when('role', { is: 'driver', then: Joi.required() }),
+        email: Joi.string().email().required().messages({
+            'string.email': 'Please provide a valid email address',
+            'any.required': 'Email is required'
+        }),
+        password: Joi.string().min(6).required().messages({
+            'string.min': 'Password must be at least 6 characters long',
+            'any.required': 'Password is required'
+        }),
+        name: Joi.string().required().messages({
+            'any.required': 'Full name is required'
+        }),
+        role: Joi.string().valid('admin', 'client', 'driver').required().messages({
+            'any.only': 'Role must be one of: admin, client, driver',
+            'any.required': 'User role is required'
+        }),
+        vehicle_plate: Joi.string().when('role', { is: 'driver', then: Joi.required() }).messages({
+            'any.required': 'Vehicle plate is required for drivers'
+        }),
+        vehicle_type: Joi.string().when('role', { is: 'driver', then: Joi.required() }).messages({
+            'any.required': 'Vehicle type is required for drivers'
+        }),
+        company_details: Joi.object({
+            phone: Joi.string().required(),
+            address: Joi.object({
+                zip: Joi.string().required(),
+                city: Joi.string().required(),
+                state: Joi.string().required(),
+                street: Joi.string().required()
+            }).required(),
+            feeType: Joi.string().valid('fixed', 'percentage').required(),
+            feeValue: Joi.number().required(),
+            companyName: Joi.string().required(),
+            billingEmail: Joi.string().email().required()
+        }).when('role', { is: 'client', then: Joi.required(), otherwise: Joi.optional() }).messages({
+            'any.required': 'Company details are required for clients'
+        })
     })
 });
 
 const loginSchema = Joi.object({
     body: Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().required(),
+        email: Joi.string().email().required().messages({
+            'string.email': 'Invalid email format',
+            'any.required': 'Email is required'
+        }),
+        password: Joi.string().required().messages({
+            'any.required': 'Password is required'
+        }),
     })
 });
 
 const forgotPasswordSchema = Joi.object({
     body: Joi.object({
-        email: Joi.string().email().required(),
+        email: Joi.string().email().required().messages({
+            'string.email': 'Invalid email format',
+            'any.required': 'Email is required for password reset'
+        }),
     })
 });
 
 const resetPasswordSchema = Joi.object({
     body: Joi.object({
-        email: Joi.string().email().required(),
-        otp: Joi.string().length(6).required(),
-        newPassword: Joi.string().min(6).required(),
+        email: Joi.string().email().required().messages({
+            'string.email': 'Invalid email format',
+            'any.required': 'Email is required'
+        }),
+        otp: Joi.string().length(6).required().messages({
+            'string.length': 'OTP must be exactly 6 characters',
+            'any.required': 'OTP is required'
+        }),
+        newPassword: Joi.string().min(6).required().messages({
+            'string.min': 'New password must be at least 6 characters',
+            'any.required': 'New password is required'
+        }),
     })
 });
 

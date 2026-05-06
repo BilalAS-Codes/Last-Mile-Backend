@@ -1,4 +1,6 @@
 const orderRepository = require('./order.repository');
+const userRepository = require('../users/user.repository');
+const db = require('../../config/db');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 const { orderBodySchema } = require('./order.validation');
@@ -11,7 +13,7 @@ class OrderService {
 
     async bulkCreateOrders(client_id, fileBuffer) {
         const results = [];
-        
+
         return new Promise((resolve, reject) => {
             const stream = Readable.from(fileBuffer);
             stream.pipe(csv())
@@ -43,11 +45,11 @@ class OrderService {
 
                                 // Validate and strip unknown fields
                                 const { value: validatedData, error } = orderBodySchema.validate(rawOrderData);
-                                
+
                                 if (error) {
                                     throw new Error(`Validation failed: ${error.message}`);
                                 }
-                                
+
                                 const created = await this.createOrder(client_id, validatedData);
                                 createdOrders.push({
                                     id: created.id,
@@ -75,15 +77,47 @@ class OrderService {
     }
 
     async getDriverAssignments(driverId) {
-        return await orderRepository.findAll({ driver_id: driverId, status: 'Assigned' });
+        return await orderRepository.findAll({ driver_id: driverId, status: 'assigned' });
     }
 
     async assignDriver(orderId, driverId) {
-        return await orderRepository.update(orderId, { driver_id: driverId, status: 'Assigned' });
+        return await orderRepository.update(orderId, { driver_id: driverId, status: 'assigned' });
     }
 
     async updateStatus(orderId, statusData) {
-        return await orderRepository.update(orderId, statusData);
+        const { status, cod_collected } = statusData;
+        if (!status) throw new Error('Status is required');
+
+        return await orderRepository.updateStatus(orderId, status.toLowerCase(), cod_collected);
+    }
+
+    async markAsDelivered(orderId) {
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const order = await orderRepository.findById(orderId);
+            if (!order) throw new Error('Order not found');
+
+            const isCod = parseFloat(order.cod_amount || 0) > 0;
+            const codCollected = isCod ? true : null;
+
+            // 1. Update order status
+            const updatedOrder = await orderRepository.updateStatus(orderId, 'delivered', codCollected, client);
+
+            // 2. If COD, add to driver's cash_in_hand
+            if (isCod && order.driver_id) {
+                await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
+            }
+
+            await client.query('COMMIT');
+            return updatedOrder;
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
     }
 }
 

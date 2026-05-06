@@ -2,31 +2,44 @@ const Joi = require('joi');
 
 const updateDriverStatusSchema = Joi.object({
     params: Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid user ID format' }),
     }),
     body: Joi.object({
-        is_active: Joi.boolean().required(),
+        is_active: Joi.boolean().required().messages({ 'any.required': 'Active status is required' }),
     })
 });
 
 const updateUserSchema = Joi.object({
     params: Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid user ID format' }),
     }),
     body: Joi.object({
         name: Joi.string().optional(),
-        email: Joi.string().email().optional(),
-        role: Joi.string().valid('admin', 'client', 'driver').optional(),
+        email: Joi.string().email().optional().messages({ 'string.email': 'Invalid email format' }),
+        role: Joi.string().valid('admin', 'client', 'driver').optional().messages({ 'any.only': 'Invalid role' }),
         active: Joi.boolean().optional(),
         vehicle_number: Joi.string().optional(),
         vehicle_type: Joi.string().optional(),
         phone: Joi.string().optional(),
-    }).min(1)
+        company_details: Joi.object({
+            phone: Joi.string().optional(),
+            address: Joi.object({
+                zip: Joi.string().optional(),
+                city: Joi.string().optional(),
+                state: Joi.string().optional(),
+                street: Joi.string().optional()
+            }).optional(),
+            feeType: Joi.string().valid('FIXED', 'PERCENTAGE').optional(),
+            feeValue: Joi.number().optional(),
+            companyName: Joi.string().optional(),
+            billingEmail: Joi.string().email().optional()
+        }).optional(),
+    }).min(1).messages({ 'object.min': 'At least one field must be provided for update' })
 });
 
 const deleteUserSchema = Joi.object({
     params: Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid user ID format' }),
     })
 });
 

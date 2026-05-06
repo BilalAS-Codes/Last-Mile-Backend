@@ -25,6 +25,18 @@ class UserController {
         }
     }
 
+    async listClients(req, res, next) {
+        try {
+            const clients = await userService.getClients();
+            res.status(200).json({
+                success: true,
+                data: clients
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+
     async updateDriverStatus(req, res, next) {
         try {
             const { id } = req.params;

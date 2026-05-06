@@ -9,6 +9,10 @@ class UserService {
         return await userRepository.getActiveDrivers();
     }
 
+    async getClients() {
+        return await userRepository.getClients();
+    }
+
     async updateStatus(id, isActive) {
         return await userRepository.updateDriverStatus(id, isActive);
     }
@@ -23,6 +27,20 @@ class UserService {
 
         if ((userData.vehicle_number || userData.vehicle_type) && role !== 'driver') {
             throw new Error('Vehicle information can only be updated for drivers');
+        }
+
+        if (userData.company_details && role !== 'client') {
+            throw new Error('Company details can only be updated for clients');
+        }
+
+        // Map nested fee info to top-level columns if present
+        if (userData.company_details) {
+            if (userData.company_details.feeType) {
+                userData.fee_type = userData.company_details.feeType;
+            }
+            if (userData.company_details.feeValue) {
+                userData.fee_value = userData.company_details.feeValue;
+            }
         }
 
         return await userRepository.update(id, userData);

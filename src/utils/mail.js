@@ -43,7 +43,29 @@ const sendOTP = async (email, otp) => {
     return await sendMail({ to: email, subject, html });
 };
 
+const sendInvoiceNotification = async (email, invoiceData) => {
+    const { clientName, amount, billingPeriod, dueDate, invoiceId } = invoiceData;
+    const subject = `New Invoice Generated - ${billingPeriod}`;
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+            <h2 style="color: #2c3e50; text-align: center;">Last Mile Logistics</h2>
+            <p>Hello ${clientName || 'Valued Client'},</p>
+            <p>A new invoice has been generated for the billing period <strong>${billingPeriod}</strong>.</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Invoice ID:</strong> ${invoiceId}</p>
+                <p style="margin: 5px 0;"><strong>Total Amount:</strong> ${amount} AED</p>
+                <p style="margin: 5px 0;"><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
+            </div>
+            <p>Please log in to your portal to view the detailed breakdown and make the payment.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #7f8c8d; text-align: center;">Thank you for choosing Last Mile Logistics.</p>
+        </div>
+    `;
+    return await sendMail({ to: email, subject, html });
+};
+
 module.exports = {
     sendMail,
     sendOTP,
+    sendInvoiceNotification,
 };
