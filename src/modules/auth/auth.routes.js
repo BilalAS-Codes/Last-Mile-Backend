@@ -58,7 +58,7 @@ const { protect } = require('../../middleware/auth.middleware');
  *             phone: { type: string, example: '555-0199' }
  *             companyName: { type: string, example: "Sarah's Boutique" }
  *             billingEmail: { type: string, format: email, example: 'billing@sarah.com' }
- *             feeType: { type: string, enum: [FIXED, PERCENTAGE], example: 'FIXED' }
+ *             feeType: { type: string, enum: [fixed, percentage], example: 'fixed' }
  *             feeValue: { type: number, example: 15 }
  *             address:
  *               type: object

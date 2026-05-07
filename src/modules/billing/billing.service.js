@@ -2,169 +2,205 @@ const billingRepository = require('./billing.repository');
 const userRepository = require('../users/user.repository');
 const db = require('../../config/db');
 const { sendInvoiceNotification } = require('../../utils/mail');
+const invoiceGenerator = require('../../utils/invoiceGenerator');
 
-class BillingService {
-    async generateInvoice(client_id, billing_period, due_date) {
-        const client = await db.pool.connect();
-        try {
-            await client.query('BEGIN');
+// Helper for email notifications
+const notifyClient = async (clientId, invoice) => {
+    try {
+        const user = await userRepository.findById(clientId);
+        if (!user) return;
 
-            const ordersQuery = 'SELECT id, delivery_fee FROM orders WHERE client_id = $1 AND status = \'delivered\' AND invoice_id IS NULL';
-            const ordersResult = await client.query(ordersQuery, [client_id]);
-            const orders = ordersResult.rows;
+        // Extract billing email from company_details
+        const companyDetails = user.company_details;
+        const billingEmail = companyDetails?.billingEmail || user.email;
 
-            if (orders.length === 0) {
-                throw new Error('No uninvoiced delivered orders found for this client');
-            }
+        if (billingEmail) {
+            // Fetch full order details for the invoice
+            const orders = await billingRepository.getOrdersByIds(invoice.orders || []);
 
-            console.log(`Service (Generate): Found ${orders.length} orders. Fees:`, orders.map(o => o.delivery_fee));
-            const total_amount = orders.reduce((sum, order) => {
-                const fee = parseFloat(order.delivery_fee || 0);
-                console.log(`Adding fee: ${fee} to sum: ${sum}`);
-                return sum + fee;
-            }, 0);
-            console.log(`Service (Generate): Final total_amount: ${total_amount}`);
-            const orderIds = orders.map(o => o.id);
+            // Generate Attachments
+            const excelBuffer = await invoiceGenerator.generateExcel(orders);
+            const pdfBuffer = await invoiceGenerator.generatePDF({
+                clientName: user.name,
+                amount: invoice.total_amount,
+                billingPeriod: invoice.billing_period,
+                dueDate: invoice.due_date,
+                invoiceId: invoice.id,
+                extra_charges: invoice.extra_charges
+            }, orders);
 
-            const invoice = await billingRepository.createInvoice({
-                client_id,
-                total_amount,
-                billing_period,
-                orders: orderIds,
-                due_date,
-                extra_charges: 0
-            }, client);
+            const attachments = [
+                {
+                    filename: `Invoice_${invoice.id}.pdf`,
+                    content: pdfBuffer
+                },
+                {
+                    filename: `Order_Details_${invoice.id}.xlsx`,
+                    content: excelBuffer
+                }
+            ];
 
-            await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
-
-            await client.query('COMMIT');
-
-            // 5. Send Notification (Background)
-            this.notifyClient(client_id, invoice).catch(err => console.error('Notification Error:', err));
-
-            return invoice;
-        } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-        } finally {
-            client.release();
+            await sendInvoiceNotification(billingEmail, {
+                clientName: user.name,
+                amount: invoice.total_amount,
+                billingPeriod: invoice.billing_period,
+                dueDate: invoice.due_date,
+                invoiceId: invoice.id
+            }, attachments);
+            console.log(`Invoice notification with attachments sent to ${billingEmail}`);
         }
+    } catch (err) {
+        console.error('Failed to send invoice notification:', err);
     }
+};
 
-    async getUninvoicedOrders(clientId) {
-        return await billingRepository.getUninvoicedOrders(clientId);
-    }
+const generateInvoice = async (client_id, billing_period, due_date) => {
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
 
-    async createInvoiceWithFees(orderIds, billing_period, due_date, extra_charges = 0) {
-        if (!orderIds || orderIds.length === 0) {
-            throw new Error('No orders selected');
+        const ordersQuery = 'SELECT id, delivery_fee FROM orders WHERE client_id = $1 AND LOWER(status) = \'delivered\' AND invoice_id IS NULL';
+        const ordersResult = await client.query(ordersQuery, [client_id]);
+        const orders = ordersResult.rows;
+
+        if (orders.length === 0) {
+            throw new Error('No uninvoiced delivered orders found for this client');
         }
 
-        const client = await db.pool.connect();
-        try {
-            await client.query('BEGIN');
+        const total_amount = orders.reduce((sum, order) => sum + parseFloat(order.delivery_fee || 0), 0);
+        const orderIds = orders.map(o => o.id);
 
-            // 1. Fetch orders (including precomputed delivery_fee)
-            const ordersQuery = `
-                SELECT id, delivery_fee, client_id 
-                FROM orders 
-                WHERE id = ANY($1) AND invoice_id IS NULL
-            `;
-            const ordersResult = await client.query(ordersQuery, [orderIds]);
-            const orders = ordersResult.rows;
+        const invoice = await billingRepository.createInvoice({
+            client_id,
+            total_amount,
+            billing_period,
+            orders: orderIds,
+            due_date,
+            extra_charges: 0
+        }, client);
 
+        await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
 
-            console.log(orders, 'orders');
+        await client.query('COMMIT');
 
-            if (orders.length === 0) {
-                throw new Error('None of the selected orders are available for invoicing');
-            }
+        // Send Notification (Background)
+        notifyClient(client_id, invoice).catch(err => console.error('Notification Error:', err));
 
-            const clientId = orders[0].client_id;
-            // Verify all orders are from the same client
-            if (orders.some(o => o.client_id !== clientId)) {
-                throw new Error('All orders must belong to the same client');
-            }
-
-            // 2. Sum precomputed fees and add extra charges
-            console.log(`Service (Manual): Found ${orders.length} orders. Fees:`, orders.map(o => o.delivery_fee));
-            const ordersTotal = orders.reduce((sum, order) => {
-                const fee = parseFloat(order.delivery_fee || 0);
-                console.log(`Adding fee: ${fee} to sum: ${sum}`);
-                return sum + fee;
-            }, 0);
-            const total_amount = ordersTotal + parseFloat(extra_charges || 0);
-            console.log(`Service (Manual): Orders Total: ${ordersTotal}, Extra: ${extra_charges}, Final: ${total_amount}`);
-
-            // 3. Create invoice
-            const invoice = await billingRepository.createInvoice({
-                client_id: clientId,
-                total_amount,
-                billing_period,
-                orders: orderIds,
-                due_date,
-                extra_charges
-            }, client);
-
-            // 4. Link orders to invoice (no fee update needed as they are precomputed)
-            await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
-
-            await client.query('COMMIT');
-
-            // 5. Send Notification (Background)
-            this.notifyClient(clientId, invoice).catch(err => console.error('Notification Error:', err));
-
-            return invoice;
-        } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-        } finally {
-            client.release();
-        }
-    }
-
-    async getClientInvoices(clientId) {
-        return await billingRepository.getInvoicesByClient(clientId);
-    }
-
-    async listAllInvoices() {
-        return await billingRepository.getAllInvoices();
-    }
-
-    async markAsPaid(invoiceId) {
-        const invoice = await billingRepository.updateInvoiceStatus(invoiceId, 'PAID');
-        if (!invoice) throw new Error('Invoice not found');
         return invoice;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
+const getUninvoicedOrders = async (clientId) => {
+    return await billingRepository.getUninvoicedOrders(clientId);
+};
+
+const createInvoiceWithFees = async (orderIds, billing_period, due_date, extra_charges = 0) => {
+    if (!orderIds || orderIds.length === 0) {
+        throw new Error('No orders selected');
     }
 
-    async getRevenueStats() {
-        return await billingRepository.getFinancialStats();
-    }
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
 
-    // Helper for email notifications
-    async notifyClient(clientId, invoice) {
-        try {
-            const user = await userRepository.findById(clientId);
-            if (!user) return;
+        const ordersQuery = `
+            SELECT id, delivery_fee, client_id 
+            FROM orders 
+            WHERE id = ANY($1) AND invoice_id IS NULL
+        `;
+        const ordersResult = await client.query(ordersQuery, [orderIds]);
+        const orders = ordersResult.rows;
 
-            // Extract billing email from company_details
-            const companyDetails = user.company_details;
-            const billingEmail = companyDetails?.billingEmail || user.email;
-
-            if (billingEmail) {
-                await sendInvoiceNotification(billingEmail, {
-                    clientName: user.name,
-                    amount: invoice.total_amount,
-                    billingPeriod: invoice.billing_period,
-                    dueDate: invoice.due_date,
-                    invoiceId: invoice.id
-                });
-                console.log(`Invoice notification sent to ${billingEmail}`);
-            }
-        } catch (err) {
-            console.error('Failed to send invoice notification:', err);
+        if (orders.length === 0) {
+            throw new Error('None of the selected orders are available for invoicing');
         }
-    }
-}
 
-module.exports = new BillingService();
+        const clientId = orders[0].client_id;
+        if (orders.some(o => o.client_id !== clientId)) {
+            throw new Error('All orders must belong to the same client');
+        }
+
+        const ordersTotal = orders.reduce((sum, order) => sum + parseFloat(order.delivery_fee || 0), 0);
+        const total_amount = ordersTotal + parseFloat(extra_charges || 0);
+
+        const invoice = await billingRepository.createInvoice({
+            client_id: clientId,
+            total_amount,
+            billing_period,
+            orders: orderIds,
+            due_date,
+            extra_charges
+        }, client);
+
+        await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
+
+        await client.query('COMMIT');
+
+        // Send Notification (Background)
+        notifyClient(clientId, invoice).catch(err => console.error('Notification Error:', err));
+
+        return invoice;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
+const getClientInvoices = async (clientId) => {
+    return await billingRepository.getInvoicesByClient(clientId);
+};
+
+const listAllInvoices = async () => {
+    return await billingRepository.getAllInvoices();
+};
+
+const markAsPaid = async (invoiceId) => {
+    const invoice = await billingRepository.updateInvoiceStatus(invoiceId, 'paid');
+    if (!invoice) throw new Error('Invoice not found');
+    return invoice;
+};
+
+const getRevenueStats = async () => {
+    return await billingRepository.getFinancialStats();
+};
+
+const getUnderpaidReport = async () => {
+    const invoices = await billingRepository.getUnderpaidInvoices();
+    
+    // Group by month for chart data
+    const chartData = invoices.reduce((acc, inv) => {
+        const month = new Date(inv.created_at).toLocaleString('default', { month: 'short', year: 'numeric' });
+        if (!acc[month]) {
+            acc[month] = { month, revenue: 0, count: 0 };
+        }
+        acc[month].revenue += parseFloat(inv.total_amount || 0);
+        acc[month].count += 1;
+        return acc;
+    }, {});
+
+    return {
+        total_underpaid_invoices: invoices.length,
+        total_underpaid_amount: invoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0),
+        chartData: Object.values(chartData).reverse(),
+        invoices: invoices
+    };
+};
+
+module.exports = {
+    generateInvoice,
+    getUninvoicedOrders,
+    createInvoiceWithFees,
+    getClientInvoices,
+    listAllInvoices,
+    markAsPaid,
+    getRevenueStats,
+    getUnderpaidReport,
+    notifyClient
+};

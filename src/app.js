@@ -13,6 +13,7 @@ const userRoutes = require('./modules/users/user.routes');
 const orderRoutes = require('./modules/orders/order.routes');
 const walletRoutes = require('./modules/wallet/wallet.routes');
 const billingRoutes = require('./modules/billing/billing.routes');
+const cashflowRoutes = require('./modules/cashflow/cashflow.routes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/cashflow', cashflowRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

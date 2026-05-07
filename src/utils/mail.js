@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const sendMail = async ({ to, subject, text, html }) => {
+const sendMail = async ({ to, subject, text, html, attachments }) => {
     try {
         const info = await transporter.sendMail({
             from: `"Last Mile" <${process.env.MAIL_USER}>`,
@@ -16,6 +16,7 @@ const sendMail = async ({ to, subject, text, html }) => {
             subject,
             text,
             html,
+            attachments // [{ filename: '...', content: ... }]
         });
         console.log('Message sent: %s', info.messageId);
         return info;
@@ -43,7 +44,7 @@ const sendOTP = async (email, otp) => {
     return await sendMail({ to: email, subject, html });
 };
 
-const sendInvoiceNotification = async (email, invoiceData) => {
+const sendInvoiceNotification = async (email, invoiceData, attachments) => {
     const { clientName, amount, billingPeriod, dueDate, invoiceId } = invoiceData;
     const subject = `New Invoice Generated - ${billingPeriod}`;
     const html = `
@@ -56,12 +57,13 @@ const sendInvoiceNotification = async (email, invoiceData) => {
                 <p style="margin: 5px 0;"><strong>Total Amount:</strong> ${amount} AED</p>
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
             </div>
+            <p>Please find the attached invoice PDF and order details Excel sheet for your reference.</p>
             <p>Please log in to your portal to view the detailed breakdown and make the payment.</p>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 12px; color: #7f8c8d; text-align: center;">Thank you for choosing Last Mile Logistics.</p>
         </div>
     `;
-    return await sendMail({ to: email, subject, html });
+    return await sendMail({ to: email, subject, html, attachments });
 };
 
 module.exports = {

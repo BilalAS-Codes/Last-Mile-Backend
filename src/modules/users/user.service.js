@@ -1,54 +1,59 @@
 const userRepository = require('./user.repository');
 
-class UserService {
-    async listAllUsers() {
-        return await userRepository.getAllUsers();
+const listAllUsers = async () => {
+    return await userRepository.getAllUsers();
+};
+
+const getDrivers = async () => {
+    return await userRepository.getActiveDrivers();
+};
+
+const getClients = async () => {
+    return await userRepository.getClients();
+};
+
+const updateStatus = async (id, isActive) => {
+    return await userRepository.updateDriverStatus(id, isActive);
+};
+
+const updateUser = async (id, userData) => {
+    const existingUser = await userRepository.findById(id);
+    if (!existingUser) {
+        throw new Error('User not found');
     }
 
-    async getDrivers() {
-        return await userRepository.getActiveDrivers();
+    const role = (userData.role || existingUser.role).toLowerCase();
+
+    if ((userData.vehicle_number || userData.vehicle_type) && role !== 'driver') {
+        throw new Error('Vehicle information can only be updated for drivers');
     }
 
-    async getClients() {
-        return await userRepository.getClients();
+    if (userData.company_details && role !== 'client') {
+        throw new Error('Company details can only be updated for clients');
     }
 
-    async updateStatus(id, isActive) {
-        return await userRepository.updateDriverStatus(id, isActive);
-    }
-
-    async updateUser(id, userData) {
-        const existingUser = await userRepository.findById(id);
-        if (!existingUser) {
-            throw new Error('User not found');
+    // Map nested fee info to top-level columns if present
+    if (userData.company_details) {
+        if (userData.company_details.feeType) {
+            userData.fee_type = userData.company_details.feeType.toLowerCase();
         }
-
-        const role = userData.role || existingUser.role;
-
-        if ((userData.vehicle_number || userData.vehicle_type) && role !== 'driver') {
-            throw new Error('Vehicle information can only be updated for drivers');
+        if (userData.company_details.feeValue) {
+            userData.fee_value = userData.company_details.feeValue;
         }
-
-        if (userData.company_details && role !== 'client') {
-            throw new Error('Company details can only be updated for clients');
-        }
-
-        // Map nested fee info to top-level columns if present
-        if (userData.company_details) {
-            if (userData.company_details.feeType) {
-                userData.fee_type = userData.company_details.feeType;
-            }
-            if (userData.company_details.feeValue) {
-                userData.fee_value = userData.company_details.feeValue;
-            }
-        }
-
-        return await userRepository.update(id, userData);
     }
 
-    async deleteUser(id) {
-        return await userRepository.delete(id);
-    }
-}
+    return await userRepository.update(id, userData);
+};
 
-module.exports = new UserService();
+const deleteUser = async (id) => {
+    return await userRepository.deleteUser(id);
+};
+
+module.exports = {
+    listAllUsers,
+    getDrivers,
+    getClients,
+    updateStatus,
+    updateUser,
+    deleteUser
+};

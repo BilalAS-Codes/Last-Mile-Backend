@@ -6,6 +6,18 @@ const { generateInvoiceSchema, manualInvoiceSchema } = require('./billing.valida
 const { protect, authorize } = require('../../middleware/auth.middleware');
 
 
+/**
+ * @swagger
+ * /api/billing:
+ *   get:
+ *     summary: List all invoices (Admin only)
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all invoices
+ */
 router.get('/', protect, authorize('admin'), billingController.listInvoices);
 
 /**
@@ -57,6 +69,28 @@ router.get('/client/:clientId', protect, authorize('admin'), billingController.g
  *         description: Revenue and outstanding balance stats
  */
 router.get('/revenue-stats', protect, authorize('admin'), billingController.getRevenueStats);
+
+/**
+ * @swagger
+ * /api/billing/under-paid-report:
+ *   get:
+ *     summary: Get a report of underpaid invoices for charting (Admin only)
+ *     tags: [Billing]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Underpaid invoice report with chart data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 message: { type: string }
+ *                 data: { type: object }
+ */
+router.get('/under-paid-report', protect, authorize('admin'), billingController.getUnderpaidReport);
 
 /**
  * @swagger

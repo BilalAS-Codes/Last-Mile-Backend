@@ -24,7 +24,7 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *       200:
  *         description: List of users
  */
-router.get('/', protect, authorize('Admin'), userController.listUsers);
+router.get('/', protect, authorize('admin'), userController.listUsers);
 
 /**
  * @swagger
@@ -52,7 +52,7 @@ router.get('/drivers', protect, userController.listDrivers);
  *       200:
  *         description: List of clients
  */
-router.get('/clients', protect, authorize('Admin'), userController.listClients);
+router.get('/clients', protect, authorize('admin'), userController.listClients);
 
 /**
  * @swagger
@@ -119,7 +119,7 @@ router.put('/:id', protect, validate(updateUserSchema), userController.update);
  *       200:
  *         description: User deleted
  */
-router.delete('/:id', protect, authorize('Admin'), validate(deleteUserSchema), userController.delete);
+router.delete('/:id', protect, authorize('admin'), validate(deleteUserSchema), userController.deleteUser);
 
 /**
  * @swagger
@@ -146,6 +146,6 @@ router.delete('/:id', protect, authorize('Admin'), validate(deleteUserSchema), u
  *       200:
  *         description: Status updated
  */
-router.put('/drivers/:id/status', protect, authorize('Admin', 'Driver'), validate(updateDriverStatusSchema), userController.updateDriverStatus);
+router.put('/drivers/:id/status', protect, authorize('admin', 'driver'), validate(updateDriverStatusSchema), userController.updateDriverStatus);
 
 module.exports = router;

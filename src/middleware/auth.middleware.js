@@ -26,13 +26,13 @@ const protect = (req, res, next) => {
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        const userRole = (req.user.role || '').toUpperCase();
-        const allowedRoles = roles.map(r => r.toUpperCase());
+        const userRole = (req.user.role || '').toLowerCase();
+        const allowedRoles = roles.map(r => r.toLowerCase());
 
         console.log(`[Auth] User Role: ${userRole}, Allowed Roles: ${allowedRoles}`);
 
-        // ADMIN always has access to everything
-        if (userRole === 'ADMIN' || allowedRoles.includes(userRole)) {
+        // admin always has access to everything
+        if (userRole === 'admin' || allowedRoles.includes(userRole)) {
             return next();
         }
 

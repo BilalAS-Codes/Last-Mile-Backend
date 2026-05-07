@@ -1,22 +1,31 @@
 const walletRepository = require('./wallet.repository');
+const userRepository = require('../users/user.repository');
 
-class WalletService {
-    async getDriverWallet(driverId) {
-        const cashInHand = await walletRepository.getUnsettledFunds(driverId);
-        return { cashInHand };
-    }
+const getDriverWallet = async (driverId) => {
+    const cashInHand = await walletRepository.getUnsettledFunds(driverId);
+    return { cashInHand };
+};
 
-    async submitSettlement(driverId, amount) {
-        return await walletRepository.createSettlement(driverId, amount);
-    }
+const submitSettlement = async (driverId, amount) => {
+    return await walletRepository.createSettlementWithLock(driverId, amount);
+};
 
-    async listSettlements() {
-        return await walletRepository.getAllSettlements();
-    }
+const listSettlements = async () => {
+    return await walletRepository.getAllSettlements();
+};
 
-    async approveSettlement(id) {
-        return await walletRepository.updateSettlementStatus(id, 'Approved');
-    }
-}
+const approveSettlement = async (id, adminId) => {
+    return await walletRepository.approveSettlementWithTransaction(id, adminId);
+};
 
-module.exports = new WalletService();
+const directSettlement = async (driverId, amount, adminId) => {
+    return await walletRepository.directSettlementWithTransaction(driverId, amount, adminId);
+};
+
+module.exports = {
+    getDriverWallet,
+    submitSettlement,
+    listSettlements,
+    approveSettlement,
+    directSettlement
+};
