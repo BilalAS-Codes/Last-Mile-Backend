@@ -48,8 +48,8 @@ const updateOrderStatusSchema = Joi.object({
         id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid order ID format' }),
     }),
     body: Joi.object({
-        status: Joi.string().valid('PENDING', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED').required().messages({
-            'any.only': 'Invalid status. Must be one of: PENDING, ASSIGNED, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED',
+        status: Joi.string().valid('pending', 'assigned', 'picked-up', 'in-transit', 'delivered', 'cancelled').required().messages({
+            'any.only': 'Invalid status. Must be one of: pending, assigned, picked-up, in-transit, delivered, cancelled',
             'any.required': 'Status is required'
         }),
         cod_collected: Joi.boolean().optional(),

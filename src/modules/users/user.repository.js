@@ -1,7 +1,9 @@
 const db = require('../../config/db');
 
+
+//for drivers 
 const getAllUsers = async () => {
-    const query = 'SELECT id, email, role, name, active,company_details,vehicle_number,vehicle_type,active, created_at FROM users ORDER BY created_at DESC';
+    const query = 'SELECT id, email, role, name,phone ,  active,company_details,vehicle_number,vehicle_type,active, created_at FROM users ORDER BY created_at DESC';
     const result = await db.query(query);
     return result.rows;
 };

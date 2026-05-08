@@ -17,10 +17,10 @@ const registerSchema = Joi.object({
             'any.only': 'Role must be one of: admin, client, driver',
             'any.required': 'User role is required'
         }),
-        vehicle_plate: Joi.when('role', {
+        vehicle_number: Joi.when('role', {
             is: 'driver',
             then: Joi.string().trim().required().messages({
-                'any.required': 'Vehicle plate is required for drivers'
+                'any.required': 'Vehicle number is required for drivers'
             }),
             otherwise: Joi.string().allow('', null).optional()
         }),

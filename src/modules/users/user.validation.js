@@ -18,8 +18,16 @@ const updateUserSchema = Joi.object({
         email: Joi.string().email().optional().messages({ 'string.email': 'Invalid email format' }),
         role: Joi.string().valid('admin', 'client', 'driver').optional().messages({ 'any.only': 'Invalid role' }),
         active: Joi.boolean().optional(),
-        vehicle_number: Joi.string().optional(),
-        vehicle_type: Joi.string().optional(),
+        vehicle_number: Joi.when('role', {
+            is: 'driver',
+            then: Joi.string().required().messages({ 'any.required': 'Vehicle number is required for drivers' }),
+            otherwise: Joi.string().optional()
+        }),
+        vehicle_type: Joi.when('role', {
+            is: 'driver',
+            then: Joi.string().required().messages({ 'any.required': 'Vehicle type is required for drivers' }),
+            otherwise: Joi.string().optional()
+        }),
         phone: Joi.string().optional(),
         company_details: Joi.object({
             phone: Joi.string().optional(),
@@ -29,7 +37,7 @@ const updateUserSchema = Joi.object({
                 state: Joi.string().optional(),
                 street: Joi.string().optional()
             }).optional(),
-            feeType: Joi.string().valid('FIXED', 'PERCENTAGE').optional(),
+            feeType: Joi.string().valid('fixed', 'percentage').optional(),
             feeValue: Joi.number().optional(),
             companyName: Joi.string().optional(),
             billingEmail: Joi.string().email().optional()
