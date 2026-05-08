@@ -152,7 +152,7 @@ router.patch('/:id/assign', protect, authorize('admin'), validate(assignDriverSc
  *           schema:
  *             type: object
  *             properties:
- *               status: { type: string, example: 'IN_TRANSIT' }
+ *               status: { type: string, example: 'in-transit' }
  *               cod_collected: { type: boolean, example: true }
  *     responses:
  *       200:

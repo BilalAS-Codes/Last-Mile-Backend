@@ -87,7 +87,7 @@ router.get('/clients', protect, authorize('admin'), userController.listClients);
  *                   phone: { type: string }
  *                   companyName: { type: string }
  *                   billingEmail: { type: string }
- *                   feeType: { type: string, enum: [FIXED, PERCENTAGE] }
+ *                   feeType: { type: string, enum: [fixed, percentage] }
  *                   feeValue: { type: number }
  *                   address:
  *                     type: object

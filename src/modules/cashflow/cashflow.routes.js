@@ -62,7 +62,7 @@ router.get('/stats', protect, authorize('admin'), cashflowController.getStats);
  *                     properties:
  *                       id: { type: string, format: uuid }
  *                       amount: { type: number }
- *                       status: { type: string, example: 'Approved' }
+ *                       status: { type: string, example: 'approved' }
  *                       created_at: { type: string, format: date-time }
  *                       driver_name: { type: string }
  *                       driver_email: { type: string }
@@ -95,7 +95,7 @@ router.get('/settlements/driver/:driverId', protect, authorize('admin'), cashflo
  * /api/cashflow/settlements/{id}/approve:
  *   post:
  *     summary: Approve a driver settlement (Admin only)
- *     description: Marks the settlement as Approved and atomically deducts the amount from the driver's cash_in_hand balance.
+ *     description: Marks the settlement as approved and atomically deducts the amount from the driver's cash_in_hand balance.
  *     tags: [Cashflow]
  *     security:
  *       - bearerAuth: []

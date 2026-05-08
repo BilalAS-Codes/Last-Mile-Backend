@@ -88,7 +88,7 @@ router.get('/settlements', protect, authorize('admin'), walletController.listSet
  *           schema:
  *             type: object
  *             properties:
- *               status: { type: string, example: 'Approved' }
+ *               status: { type: string, example: 'approved' }
  *     responses:
  *       200:
  *         description: Settlement updated
