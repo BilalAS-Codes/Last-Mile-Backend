@@ -29,8 +29,8 @@ const createUser = async (userData) => {
         password,
         role.toLowerCase(),
         name,
-        vehicle_number || null,
-        vehicle_type || null,
+        vehicle_number,
+        vehicle_type,
         company_details ? JSON.stringify(company_details) : null,
         fee_type,
         fee_value

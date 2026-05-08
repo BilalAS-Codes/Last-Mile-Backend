@@ -5,6 +5,8 @@ const { sendOTP } = require('../../utils/mail');
 
 const register = async (userData) => {
     const { password, ...rest } = userData;
+
+    console.log(userData, 'user')
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await authRepository.findByEmail(userData.email);
     if (user) {
