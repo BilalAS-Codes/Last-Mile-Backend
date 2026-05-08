@@ -1,0 +1,4 @@
+pickup_address,pickup_lat,pickup_long,delivery_address,delivery_lat,delivery_long,customer_name,customer_phone,order_value,delivery_fee,cod_amount
+"123 Al Barsha, Dubai",25.1124,55.1897,"456 Dubai Marina, Dubai",25.0685,55.1312,"Alice Johnson","971501234567",500,25,525
+"JLT Cluster X, Dubai",25.0768,55.1489,"Business Bay Tower 1, Dubai",25.1852,55.2741,"Bob Smith","971509876543",1200,30,0
+"Deira City Center, Dubai",25.2512,55.3331,"Silicon Oasis, Dubai",25.1222,55.3897,"Charlie Brown","971505554433",150,15,165

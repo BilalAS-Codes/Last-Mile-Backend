@@ -72,15 +72,15 @@ router.get('/revenue-stats', protect, authorize('admin'), billingController.getR
 
 /**
  * @swagger
- * /api/billing/under-paid-report:
+ * /api/billing/revenue-chart:
  *   get:
- *     summary: Get a report of underpaid invoices for charting (Admin only)
+ *     summary: Get revenue performance data for charting (Admin only)
  *     tags: [Billing]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Underpaid invoice report with chart data
+ *         description: Revenue performance chart data
  *         content:
  *           application/json:
  *             schema:
@@ -90,7 +90,7 @@ router.get('/revenue-stats', protect, authorize('admin'), billingController.getR
  *                 message: { type: string }
  *                 data: { type: object }
  */
-router.get('/under-paid-report', protect, authorize('admin'), billingController.getUnderpaidReport);
+router.get('/revenue-chart', protect, authorize('admin'), billingController.getRevenueChartData);
 
 /**
  * @swagger

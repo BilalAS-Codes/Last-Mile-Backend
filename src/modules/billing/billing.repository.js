@@ -78,7 +78,8 @@ const getFinancialStats = async () => {
         SELECT 
             COALESCE(SUM(delivery_fee), 0) as total_revenue,
             COALESCE(SUM(CASE WHEN LOWER(status) = 'delivered' THEN cod_amount ELSE 0 END), 0) as total_cod_collected,
-            (SELECT COALESCE(SUM(outstanding_balance), 0) FROM invoices) as total_outstanding
+            (SELECT COALESCE(SUM(outstanding_balance), 0) FROM invoices) as total_outstanding,
+            (SELECT COUNT(*) FROM orders) as total_orders
         FROM orders
     `;
     const result = await db.query(statsQuery);
@@ -103,6 +104,46 @@ const getOrdersByIds = async (orderIds) => {
     return result.rows;
 };
 
+const getRevenueChartData = async () => {
+    // Get last 7 days revenue (Daily)
+    const dailyQuery = `
+        SELECT 
+            TO_CHAR(d, 'Dy') as label,
+            COALESCE(SUM(o.delivery_fee), 0) as revenue
+        FROM (
+            SELECT CURRENT_DATE - i as d
+            FROM generate_series(0, 6) i
+        ) days
+        LEFT JOIN orders o ON DATE(o.created_at) = days.d AND LOWER(o.status) = 'delivered'
+        GROUP BY days.d
+        ORDER BY days.d ASC
+    `;
+
+    // Get last 6 months revenue (Monthly)
+    const monthlyQuery = `
+        SELECT 
+            TO_CHAR(m, 'Mon') as label,
+            COALESCE(SUM(o.delivery_fee), 0) as revenue
+        FROM (
+            SELECT DATE_TRUNC('month', CURRENT_DATE) - (i || ' month')::interval as m
+            FROM generate_series(0, 5) i
+        ) months
+        LEFT JOIN orders o ON DATE_TRUNC('month', o.created_at) = months.m AND LOWER(o.status) = 'delivered'
+        GROUP BY months.m
+        ORDER BY months.m ASC
+    `;
+
+    const [daily, monthly] = await Promise.all([
+        db.query(dailyQuery),
+        db.query(monthlyQuery)
+    ]);
+
+    return {
+        weekly: daily.rows,
+        monthly: monthly.rows
+    };
+};
+
 module.exports = {
     createInvoice,
     getUninvoicedOrders,
@@ -113,5 +154,6 @@ module.exports = {
     updateInvoiceStatus,
     getFinancialStats,
     getOrdersByIds,
-    getUnderpaidInvoices
+    getUnderpaidInvoices,
+    getRevenueChartData
 };

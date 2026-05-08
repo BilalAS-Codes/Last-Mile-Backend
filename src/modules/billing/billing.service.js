@@ -171,25 +171,21 @@ const getRevenueStats = async () => {
     return await billingRepository.getFinancialStats();
 };
 
-const getUnderpaidReport = async () => {
-    const invoices = await billingRepository.getUnderpaidInvoices();
+const getRevenueChartData = async () => {
+    const chartData = await billingRepository.getRevenueChartData();
+    const stats = await billingRepository.getFinancialStats();
     
-    // Group by month for chart data
-    const chartData = invoices.reduce((acc, inv) => {
-        const month = new Date(inv.created_at).toLocaleString('default', { month: 'short', year: 'numeric' });
-        if (!acc[month]) {
-            acc[month] = { month, revenue: 0, count: 0 };
-        }
-        acc[month].revenue += parseFloat(inv.total_amount || 0);
-        acc[month].count += 1;
-        return acc;
-    }, {});
-
     return {
-        total_underpaid_invoices: invoices.length,
-        total_underpaid_amount: invoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0),
-        chartData: Object.values(chartData).reverse(),
-        invoices: invoices
+        revenue_stats: {
+            total_revenue: stats.total_revenue,
+            total_orders: stats.total_orders,
+            total_outstanding: stats.total_outstanding,
+            total_cod_collected: stats.total_cod_collected
+        },
+        charts: {
+            weekly: chartData.weekly,
+            monthly: chartData.monthly
+        }
     };
 };
 
@@ -201,6 +197,6 @@ module.exports = {
     listAllInvoices,
     markAsPaid,
     getRevenueStats,
-    getUnderpaidReport,
+    getRevenueChartData,
     notifyClient
 };

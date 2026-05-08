@@ -179,4 +179,25 @@ router.patch('/:id/status', protect, authorize('admin', 'driver'), validate(upda
  */
 router.patch('/:id/delivered', protect, authorize('admin', 'driver'), orderController.markAsDelivered);
 
+/**
+ * @swagger
+ * /api/orders/{id}:
+ *   delete:
+ *     summary: Delete an order (Admin only)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Order deleted successfully
+ *       404:
+ *         description: Order not found
+ */
+router.delete('/:id', protect, authorize('admin'), orderController.remove);
+
 module.exports = router;

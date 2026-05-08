@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const create = async (orderData) => {
     const {
         client_id, tracking_id, pickup_address, delivery_address,
-        customer_name, customer_phone, cod_amount, order_value, delivery_fee
+        customer_name, customer_phone, cod_amount, order_value, delivery_fee, assigned_by
     } = orderData;
 
     const timeline = [{ status: 'pending', timestamp: new Date().toISOString() }];
@@ -12,15 +12,15 @@ const create = async (orderData) => {
     const query = `
         INSERT INTO orders (
             tracking_id, client_id, pickup_address, delivery_address, 
-            customer_name, customer_phone, cod_amount, order_value, delivery_fee, status, timeline
+            customer_name, customer_phone, cod_amount, order_value, delivery_fee, status, timeline, assigned_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11)
         RETURNING *
     `;
     const values = [
         tracking_id, client_id, JSON.stringify(pickup_address), JSON.stringify(delivery_address),
         customer_name, customer_phone, cod_amount || 0, order_value || 0, delivery_fee || 0,
-        JSON.stringify(timeline)
+        JSON.stringify(timeline), assigned_by
     ];
     const result = await db.query(query, values);
     return result.rows[0];
@@ -28,10 +28,11 @@ const create = async (orderData) => {
 
 const findAll = async (filters = {}) => {
     let query = `
-        SELECT o.*, u1.name as client_name, u2.name as driver_name 
+        SELECT o.*, u1.name as client_name, u2.name as driver_name, u3.name as assigned_by_name 
         FROM orders o
         JOIN users u1 ON o.client_id = u1.id
         LEFT JOIN users u2 ON o.driver_id = u2.id
+        LEFT JOIN users u3 ON o.assigned_by = u3.id
         WHERE 1=1
     `;
     const values = [];
@@ -57,10 +58,11 @@ const findAll = async (filters = {}) => {
 
 const findById = async (id) => {
     const query = `
-        SELECT o.*, u1.name as client_name, u2.name as driver_name 
+        SELECT o.*, u1.name as client_name, u2.name as driver_name, u3.name as assigned_by_name 
         FROM orders o
         JOIN users u1 ON o.client_id = u1.id
         LEFT JOIN users u2 ON o.driver_id = u2.id
+        LEFT JOIN users u3 ON o.assigned_by = u3.id
         WHERE o.id = $1
     `;
     const result = await db.query(query, [id]);
@@ -112,11 +114,18 @@ const updateStatus = async (id, status, codCollected = null, client = db) => {
     return result.rows[0];
 };
 
+const remove = async (id) => {
+    const query = 'DELETE FROM orders WHERE id = $1 RETURNING *';
+    const result = await db.query(query, [id]);
+    return result.rows[0];
+};
+
 module.exports = {
     create,
     findAll,
     findById,
     findByIds,
     update,
-    updateStatus
+    updateStatus,
+    remove
 };

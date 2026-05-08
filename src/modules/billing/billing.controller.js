@@ -67,12 +67,12 @@ const getRevenueStats = async (req, res, next) => {
     }
 };
 
-const getUnderpaidReport = async (req, res, next) => {
+const getRevenueChartData = async (req, res, next) => {
     try {
-        const report = await billingService.getUnderpaidReport();
+        const report = await billingService.getRevenueChartData();
         res.status(200).json({
             success: true,
-            message: 'Underpaid invoice report fetched successfully',
+            message: 'Revenue chart data fetched successfully',
             data: report
         });
     } catch (err) {
@@ -128,7 +128,7 @@ module.exports = {
     listInvoices,
     getClientInvoices,
     getRevenueStats,
-    getUnderpaidReport,
+    getRevenueChartData,
     getUninvoicedOrders,
     createManualInvoice,
     markAsPaid

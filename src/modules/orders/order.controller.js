@@ -21,7 +21,6 @@ const bulkCreate = async (req, res, next) => {
         const result = await orderService.bulkCreateOrders(req.user.id, req.file.buffer);
         res.status(201).json({
             success: true,
-            message: 'Bulk order processing completed',
             ...result
         });
     } catch (err) {
@@ -65,7 +64,7 @@ const assign = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { driver_id } = req.body;
-        const updated = await orderService.assignDriver(id, driver_id);
+        const updated = await orderService.assignDriver(id, driver_id, req.user.id);
         res.status(200).json({
             success: true,
             message: 'Driver assigned successfully',
@@ -104,6 +103,20 @@ const markAsDelivered = async (req, res, next) => {
     }
 };
 
+const remove = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const deleted = await orderService.deleteOrder(id);
+        res.status(200).json({
+            success: true,
+            message: 'Order deleted successfully',
+            data: deleted
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     create,
     bulkCreate,
@@ -111,5 +124,6 @@ module.exports = {
     getDriverAssignments,
     assign,
     updateStatus,
-    markAsDelivered
+    markAsDelivered,
+    remove
 };
