@@ -11,7 +11,7 @@ const approveSettlementSchema = Joi.object({
         id: Joi.string().uuid().required(),
     }),
     body: Joi.object({
-        status: Joi.string().valid('approved').required(),
+        status: Joi.string().valid('approved', 'rejected').required(),
     })
 });
 

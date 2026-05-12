@@ -42,10 +42,11 @@ const listSettlements = async (req, res, next) => {
 const approve = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const approved = await walletService.approveSettlement(id, req.user.id);
+        const { status } = req.body;
+        const updated = await walletService.updateSettlement(id, status || 'approved', req.user.id);
         res.status(200).json({
             success: true,
-            data: approved
+            data: updated
         });
     } catch (err) {
         next(err);

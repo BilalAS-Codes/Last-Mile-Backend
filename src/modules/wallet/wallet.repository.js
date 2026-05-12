@@ -78,8 +78,8 @@ const approveSettlementWithTransaction = async (id, adminId) => {
         const settlement = settlementRes.rows[0];
 
         if (!settlement) throw new Error('Settlement not found');
-        if (settlement.status.toLowerCase() === 'approved') {
-            throw new Error('Settlement already approved');
+        if (settlement.status.toLowerCase() !== 'pending') {
+            throw new Error(`Settlement already ${settlement.status}`);
         }
 
         const updateSettlementQuery = `
@@ -94,6 +94,46 @@ const approveSettlementWithTransaction = async (id, adminId) => {
             UPDATE users 
             SET cash_in_hand = cash_in_hand - $1,
                 pending_settlement_balance = pending_settlement_balance - $1
+            WHERE id = $2 
+            RETURNING cash_in_hand
+        `;
+        await client.query(updateDriverQuery, [settlement.amount, settlement.driver_id]);
+
+        await client.query('COMMIT');
+        return updatedSettlementRes.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
+const rejectSettlementWithTransaction = async (id, adminId) => {
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const settlementQuery = 'SELECT driver_id, amount, status FROM settlements WHERE id = $1 FOR UPDATE';
+        const settlementRes = await client.query(settlementQuery, [id]);
+        const settlement = settlementRes.rows[0];
+
+        if (!settlement) throw new Error('Settlement not found');
+        if (settlement.status.toLowerCase() !== 'pending') {
+            throw new Error(`Settlement already ${settlement.status}`);
+        }
+
+        const updateSettlementQuery = `
+            UPDATE settlements 
+            SET status = 'rejected', admin_id = $1, updated_at = NOW() 
+            WHERE id = $2 
+            RETURNING *
+        `;
+        const updatedSettlementRes = await client.query(updateSettlementQuery, [adminId, id]);
+
+        const updateDriverQuery = `
+            UPDATE users 
+            SET pending_settlement_balance = pending_settlement_balance - $1
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
@@ -156,5 +196,6 @@ module.exports = {
     getAllSettlements,
     updateSettlementStatus,
     approveSettlementWithTransaction,
+    rejectSettlementWithTransaction,
     directSettlementWithTransaction
 };
