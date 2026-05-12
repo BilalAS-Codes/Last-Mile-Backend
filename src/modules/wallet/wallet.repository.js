@@ -11,7 +11,6 @@ const getUnsettledFunds = async (driverId) => {
 };
 
 const createSettlementWithLock = async (driverId, amount) => {
-    s
     const client = await db.pool.connect();
     try {
         await client.query('BEGIN');
