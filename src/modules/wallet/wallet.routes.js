@@ -27,7 +27,20 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Wallet details
+ *         description: Wallet details (including net cash, pending, and total collected)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     cash_in_hand: { type: number, description: 'Net available cash after deducting pending settlements' }
+ *                     total_collected_balance: { type: number, description: 'Total cash collected from deliveries (including locked amount)' }
+ *                     pending_settlement_balance: { type: number, description: 'Amount currently locked in pending settlement requests' }
+ *                     total_cod_collected: { type: number, description: 'Lifetime total COD collected' }
  */
 router.get('/driver/:driverId', protect, walletController.getDriverWallet);
 
@@ -72,7 +85,7 @@ router.get('/settlements', protect, authorize('admin'), walletController.listSet
  * @swagger
  * /api/wallet/settlements/{id}:
  *   patch:
- *     summary: Approve or update a settlement (Admin only)
+ *     summary: Approve or reject a settlement (Admin only)
  *     tags: [Wallet]
  *     security:
  *       - bearerAuth: []
@@ -87,11 +100,12 @@ router.get('/settlements', protect, authorize('admin'), walletController.listSet
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [status]
  *             properties:
- *               status: { type: string, example: 'approved' }
+ *               status: { type: string, enum: [approved, rejected], example: 'approved' }
  *     responses:
  *       200:
- *         description: Settlement updated
+ *         description: Settlement updated successfully
  */
 router.patch('/settlements/:id', protect, authorize('admin'), validate(approveSettlementSchema), walletController.approve);
 
