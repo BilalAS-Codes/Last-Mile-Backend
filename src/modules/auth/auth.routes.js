@@ -93,7 +93,29 @@ router.post('/register', validate(registerSchema), authController.register);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Login a user
+ *     summary: Login an Admin or Client (Drivers not allowed)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       403:
+ *         description: Drivers are not allowed to access this portal
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post('/login', validate(loginSchema), authController.login);
+
+/**
+ * @swagger
+ * /api/auth/driver/login:
+ *   post:
+ *     summary: Login a Driver
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -107,7 +129,7 @@ router.post('/register', validate(registerSchema), authController.register);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', validate(loginSchema), authController.login);
+router.post('/driver/login', validate(loginSchema), authController.driverLogin);
 
 /**
  * @swagger

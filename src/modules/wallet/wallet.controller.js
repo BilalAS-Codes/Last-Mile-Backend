@@ -39,6 +39,27 @@ const listSettlements = async (req, res, next) => {
     }
 };
 
+const getDriverSettlements = async (req, res, next) => {
+    try {
+        const { driverId } = req.params;
+        
+        // Authorization: Admin can see all, Driver can only see their own
+        if (req.user.role.toLowerCase() !== 'admin' && req.user.id !== driverId) {
+            const error = new Error('Not authorized to view these settlements');
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const settlements = await walletService.getDriverSettlements(driverId);
+        res.status(200).json({
+            success: true,
+            data: settlements
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 const approve = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -57,5 +78,6 @@ module.exports = {
     getDriverWallet,
     settle,
     listSettlements,
+    getDriverSettlements,
     approve
 };

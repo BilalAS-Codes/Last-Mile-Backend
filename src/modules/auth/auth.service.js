@@ -21,13 +21,20 @@ const login = async (email, password) => {
         throw new Error('Invalid credentials');
     }
 
+    const role = user.role.toLowerCase();
+    if (role === 'driver') {
+        const error = new Error('Drivers are not allowed to access this portal');
+        error.statusCode = 403;
+        throw error;
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
         throw new Error('Invalid credentials');
     }
 
     const token = jwt.sign(
-        { id: user.id, role: user.role.toLowerCase() },
+        { id: user.id, role },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
     );
@@ -37,7 +44,42 @@ const login = async (email, password) => {
         user: {
             id: user.id,
             email: user.email,
-            role: user.role.toLowerCase(),
+            role,
+            name: user.name
+        }
+    };
+};
+
+const driverLogin = async (email, password) => {
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+        throw new Error('Invalid credentials');
+    }
+
+    const role = user.role.toLowerCase();
+    if (role !== 'driver') {
+        const error = new Error('Invalid credentials');
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        throw new Error('Invalid credentials');
+    }
+
+    const token = jwt.sign(
+        { id: user.id, role: 'driver' },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+
+    return {
+        token,
+        user: {
+            id: user.id,
+            email: user.email,
+            role: 'driver',
             name: user.name
         }
     };
@@ -80,6 +122,7 @@ const resetPassword = async (email, otp, newPassword) => {
 module.exports = {
     register,
     login,
+    driverLogin,
     getMe,
     forgotPassword,
     resetPassword

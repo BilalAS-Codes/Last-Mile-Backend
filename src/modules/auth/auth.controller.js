@@ -26,6 +26,19 @@ const login = async (req, res, next) => {
     }
 };
 
+const driverLogin = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+        const result = await authService.driverLogin(email, password);
+        res.status(200).json({
+            success: true,
+            ...result
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 const getMe = async (req, res, next) => {
     try {
         const user = await authService.getMe(req.user.id);
@@ -67,6 +80,7 @@ const resetPassword = async (req, res, next) => {
 module.exports = {
     register,
     login,
+    driverLogin,
     getMe,
     forgotPassword,
     resetPassword

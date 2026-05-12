@@ -21,9 +21,9 @@ const createSettlementWithLock = async (driverId, amount) => {
 
         if (!user) throw new Error('Driver not found');
 
-        const available = parseFloat(user.cash_in_hand || 0) - parseFloat(user.pending_settlement_balance || 0);
+        const available = parseFloat(user.cash_in_hand || 0);
         if (amount > available) {
-            throw new Error(`Insufficient available cash. You have $${available.toFixed(2)} available ($${user.pending_settlement_balance} is already locked in pending requests).`);
+            throw new Error(`Insufficient available cash. You have $${available.toFixed(2)} available.`);
         }
 
         const createSettlementQuery = `
@@ -33,8 +33,8 @@ const createSettlementWithLock = async (driverId, amount) => {
         `;
         const settlementRes = await client.query(createSettlementQuery, [driverId, amount]);
 
-        const updatePendingQuery = 'UPDATE users SET pending_settlement_balance = pending_settlement_balance + $1 WHERE id = $2';
-        await client.query(updatePendingQuery, [amount, driverId]);
+        const updateBalancesQuery = 'UPDATE users SET cash_in_hand = cash_in_hand - $1, pending_settlement_balance = pending_settlement_balance + $1 WHERE id = $2';
+        await client.query(updateBalancesQuery, [amount, driverId]);
 
         await client.query('COMMIT');
         return settlementRes.rows[0];
@@ -54,6 +54,18 @@ const getAllSettlements = async () => {
         ORDER BY s.created_at DESC
     `;
     const result = await db.query(query);
+    return result.rows;
+};
+
+const getSettlementsByDriverId = async (driverId) => {
+    const query = `
+        SELECT s.*, u.name as driver_name 
+        FROM settlements s
+        JOIN users u ON s.driver_id = u.id
+        WHERE s.driver_id = $1
+        ORDER BY s.created_at DESC
+    `;
+    const result = await db.query(query, [driverId]);
     return result.rows;
 };
 
@@ -92,8 +104,7 @@ const approveSettlementWithTransaction = async (id, adminId) => {
 
         const updateDriverQuery = `
             UPDATE users 
-            SET cash_in_hand = cash_in_hand - $1,
-                pending_settlement_balance = pending_settlement_balance - $1
+            SET pending_settlement_balance = pending_settlement_balance - $1
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
@@ -133,7 +144,8 @@ const rejectSettlementWithTransaction = async (id, adminId) => {
 
         const updateDriverQuery = `
             UPDATE users 
-            SET pending_settlement_balance = pending_settlement_balance - $1
+            SET cash_in_hand = cash_in_hand + $1,
+                pending_settlement_balance = pending_settlement_balance - $1
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
@@ -160,9 +172,9 @@ const directSettlementWithTransaction = async (driverId, amount, adminId) => {
 
         if (!user) throw new Error('Driver not found');
 
-        const available = parseFloat(user.cash_in_hand || 0) - parseFloat(user.pending_settlement_balance || 0);
+        const available = parseFloat(user.cash_in_hand || 0);
         if (amount > available) {
-            throw new Error(`Cannot settle $${amount}. Only $${available.toFixed(2)} is available ($${user.pending_settlement_balance} is locked in pending requests).`);
+            throw new Error(`Cannot settle $${amount}. Only $${available.toFixed(2)} is available.`);
         }
 
         const createSettlementQuery = `
@@ -194,6 +206,7 @@ module.exports = {
     getUnsettledFunds,
     createSettlementWithLock,
     getAllSettlements,
+    getSettlementsByDriverId,
     updateSettlementStatus,
     approveSettlementWithTransaction,
     rejectSettlementWithTransaction,

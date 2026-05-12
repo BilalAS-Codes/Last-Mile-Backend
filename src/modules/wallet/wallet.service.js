@@ -13,13 +13,13 @@ const getDriverWallet = async (driverId) => {
         throw error;
     }
 
-    const totalCollected = parseFloat(user.cash_in_hand || 0);
+    const availableBalance = parseFloat(user.cash_in_hand || 0);
     const pendingBalance = parseFloat(user.pending_settlement_balance || 0);
 
     return {
-        cash_in_hand: totalCollected - pendingBalance, // Net available (after deducting locked amount)
-        total_collected_balance: totalCollected,
+        cash_in_hand: availableBalance, // Net available (already deducted in DB upon request)
         pending_settlement_balance: pendingBalance,
+        total_collected_held: availableBalance + pendingBalance, // Total cash currently with driver
         total_cod_collected: parseFloat(unsettledFunds || 0)
     };
 };
@@ -30,6 +30,10 @@ const submitSettlement = async (driverId, amount) => {
 
 const listSettlements = async () => {
     return await walletRepository.getAllSettlements();
+};
+
+const getDriverSettlements = async (driverId) => {
+    return await walletRepository.getSettlementsByDriverId(driverId);
 };
 
 const updateSettlement = async (id, status, adminId) => {
@@ -50,6 +54,7 @@ module.exports = {
     getDriverWallet,
     submitSettlement,
     listSettlements,
+    getDriverSettlements,
     updateSettlement,
     directSettlement
 };
