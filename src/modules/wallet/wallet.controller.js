@@ -16,6 +16,7 @@ const getDriverWallet = async (req, res, next) => {
 const settle = async (req, res, next) => {
     try {
         const { amount } = req.body;
+        console.log(amount, 'amount')
         const settlement = await walletService.submitSettlement(req.user.id, amount);
         res.status(201).json({
             success: true,

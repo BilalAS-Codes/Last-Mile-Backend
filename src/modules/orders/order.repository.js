@@ -56,6 +56,20 @@ const findAll = async (filters = {}) => {
     return result.rows;
 };
 
+const findAllAssignedToDrivers = async (driverId) => {
+    const query = `
+        SELECT o.*, u1.name as client_name, u2.name as driver_name, u3.name as assigned_by_name 
+        FROM orders o
+        JOIN users u1 ON o.client_id = u1.id
+        LEFT JOIN users u2 ON o.driver_id = u2.id
+        LEFT JOIN users u3 ON o.assigned_by = u3.id
+        WHERE o.driver_id = $1 
+        ORDER BY o.created_at DESC
+    `;
+    const result = await db.query(query, [driverId]);
+    return result.rows;
+};
+
 const findById = async (id) => {
     const query = `
         SELECT o.*, u1.name as client_name, u2.name as driver_name, u3.name as assigned_by_name 
@@ -127,5 +141,6 @@ module.exports = {
     findByIds,
     update,
     updateStatus,
-    remove
+    remove,
+    findAllAssignedToDrivers
 };

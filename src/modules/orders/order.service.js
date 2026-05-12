@@ -32,7 +32,7 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
         'customer_name', 'customer_phone',
         'order_value', 'delivery_fee'
     ];
-    
+
     const missingHeaders = requiredHeaders.filter(h => !Object.keys(results[0]).includes(h));
     if (missingHeaders.length > 0) {
         const error = new Error(`Bulk upload failed: Missing required CSV columns: ${missingHeaders.join(', ')}`);
@@ -124,7 +124,7 @@ const getOrders = async (filters) => {
 };
 
 const getDriverAssignments = async (driverId) => {
-    return await orderRepository.findAll({ driver_id: driverId, status: 'assigned' });
+    return await orderRepository.findAllAssignedToDrivers(driverId);
 };
 
 const assignDriver = async (orderId, driverId, adminId) => {
@@ -139,10 +139,6 @@ const updateStatus = async (orderId, statusData) => {
     const { status, cod_collected } = statusData;
     if (!status) throw new Error('Status is required');
 
-    return await orderRepository.updateStatus(orderId, status.toLowerCase(), cod_collected);
-};
-
-const markAsDelivered = async (orderId) => {
     const client = await db.pool.connect();
     try {
         await client.query('BEGIN');
@@ -150,15 +146,18 @@ const markAsDelivered = async (orderId) => {
         const order = await orderRepository.findById(orderId);
         if (!order) throw new Error('Order not found');
 
-        const isCod = parseFloat(order.cod_amount || 0) > 0;
-        const codCollected = isCod ? true : null;
+        const lowerStatus = status.toLowerCase();
+        const updatedOrder = await orderRepository.updateStatus(orderId, lowerStatus, cod_collected, client);
 
-        // 1. Update order status
-        const updatedOrder = await orderRepository.updateStatus(orderId, 'delivered', codCollected, client);
+        // Update cash in hand if delivered and COD collected
+        if (lowerStatus === 'delivered' && cod_collected === true) {
+            // Check if this is a new delivery/collection to avoid double counting
+            const alreadyProcessed = order.status.toLowerCase() === 'delivered' && order.cod_collected === true;
 
-        // 2. If COD, add to driver's cash_in_hand
-        if (isCod && order.driver_id) {
-            await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
+            if (!alreadyProcessed && order.driver_id) {
+                // Using cod_amount as it represents the cash collected by the driver
+                await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
+            }
         }
 
         await client.query('COMMIT');
@@ -169,6 +168,16 @@ const markAsDelivered = async (orderId) => {
     } finally {
         client.release();
     }
+};
+
+const markAsDelivered = async (orderId) => {
+    const order = await orderRepository.findById(orderId);
+    if (!order) throw new Error('Order not found');
+
+    const isCod = parseFloat(order.cod_amount || 0) > 0;
+    const codCollected = isCod ? true : null;
+
+    return await updateStatus(orderId, { status: 'delivered', cod_collected: codCollected });
 };
 
 const deleteOrder = async (orderId) => {
