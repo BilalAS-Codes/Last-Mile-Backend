@@ -33,8 +33,18 @@ const createSettlementWithLock = async (driverId, amount) => {
         `;
         const settlementRes = await client.query(createSettlementQuery, [driverId, amount]);
 
-        const updateBalancesQuery = 'UPDATE users SET cash_in_hand = cash_in_hand - $1, pending_settlement_balance = pending_settlement_balance + $1 WHERE id = $2';
-        await client.query(updateBalancesQuery, [amount, driverId]);
+        const updateBalancesQuery = 'UPDATE users SET cash_in_hand = cash_in_hand - $1, pending_settlement_balance = pending_settlement_balance + $1 WHERE id = $2 RETURNING cash_in_hand';
+        const updatedUserRes = await client.query(updateBalancesQuery, [amount, driverId]);
+        const updatedUser = updatedUserRes.rows[0];
+
+        // Record transaction
+        await createTransaction({
+            driver_id: driverId,
+            amount: -amount, // Negative for request
+            type: 'settlement_request',
+            settlement_id: settlementRes.rows[0].id,
+            balance_after: updatedUser.cash_in_hand
+        }, client);
 
         await client.query('COMMIT');
         return settlementRes.rows[0];
@@ -108,7 +118,17 @@ const approveSettlementWithTransaction = async (id, adminId) => {
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
-        await client.query(updateDriverQuery, [settlement.amount, settlement.driver_id]);
+        const updatedUserRes = await client.query(updateDriverQuery, [settlement.amount, settlement.driver_id]);
+        
+        // Record transaction
+        await createTransaction({
+            driver_id: settlement.driver_id,
+            amount: 0, // No change to available balance (already deducted at request)
+            type: 'settlement_approved',
+            settlement_id: id,
+            admin_id: adminId,
+            balance_after: updatedUserRes.rows[0].cash_in_hand
+        }, client);
 
         await client.query('COMMIT');
         return updatedSettlementRes.rows[0];
@@ -149,7 +169,17 @@ const rejectSettlementWithTransaction = async (id, adminId) => {
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
-        await client.query(updateDriverQuery, [settlement.amount, settlement.driver_id]);
+        const updatedUserRes = await client.query(updateDriverQuery, [settlement.amount, settlement.driver_id]);
+
+        // Record transaction
+        await createTransaction({
+            driver_id: settlement.driver_id,
+            amount: settlement.amount, // Refunded
+            type: 'settlement_rejected',
+            settlement_id: id,
+            admin_id: adminId,
+            balance_after: updatedUserRes.rows[0].cash_in_hand
+        }, client);
 
         await client.query('COMMIT');
         return updatedSettlementRes.rows[0];
@@ -190,7 +220,17 @@ const directSettlementWithTransaction = async (driverId, amount, adminId) => {
             WHERE id = $2 
             RETURNING cash_in_hand
         `;
-        await client.query(updateDriverQuery, [amount, driverId]);
+        const updatedUserRes = await client.query(updateDriverQuery, [amount, driverId]);
+
+        // Record transaction
+        await createTransaction({
+            driver_id: driverId,
+            amount: -amount,
+            type: 'settlement_approved',
+            settlement_id: settlementRes.rows[0].id,
+            admin_id: adminId,
+            balance_after: updatedUserRes.rows[0].cash_in_hand
+        }, client);
 
         await client.query('COMMIT');
         return settlementRes.rows[0];
@@ -202,6 +242,32 @@ const directSettlementWithTransaction = async (driverId, amount, adminId) => {
     }
 };
 
+const createTransaction = async (data, client = db) => {
+    const { driver_id, amount, type, order_id, settlement_id, admin_id, balance_after } = data;
+    const query = `
+        INSERT INTO wallet_transactions 
+        (driver_id, amount, type, order_id, settlement_id, admin_id, balance_after)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+    `;
+    const result = await client.query(query, [
+        driver_id, amount, type, order_id, settlement_id, admin_id, balance_after
+    ]);
+    return result.rows[0];
+};
+
+const getDriverTransactions = async (driverId) => {
+    const query = `
+        SELECT t.*, o.tracking_id as order_tracking_id
+        FROM wallet_transactions t
+        LEFT JOIN orders o ON t.order_id = o.id
+        WHERE t.driver_id = $1
+        ORDER BY t.created_at DESC
+    `;
+    const result = await db.query(query, [driverId]);
+    return result.rows;
+};
+
 module.exports = {
     getUnsettledFunds,
     createSettlementWithLock,
@@ -210,5 +276,7 @@ module.exports = {
     updateSettlementStatus,
     approveSettlementWithTransaction,
     rejectSettlementWithTransaction,
-    directSettlementWithTransaction
+    directSettlementWithTransaction,
+    createTransaction,
+    getDriverTransactions
 };

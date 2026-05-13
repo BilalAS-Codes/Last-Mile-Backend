@@ -102,6 +102,25 @@ router.get('/settlements/driver/:driverId', protect, walletController.getDriverS
 
 /**
  * @swagger
+ * /api/wallet/transactions/driver/{driverId}:
+ *   get:
+ *     summary: List all wallet transactions for a specific driver (Admin or self)
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: driverId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: List of transactions for the driver
+ */
+router.get('/transactions/driver/:driverId', protect, walletController.getDriverTransactions);
+
+/**
+ * @swagger
  * /api/wallet/settlements/{id}:
  *   patch:
  *     summary: Approve or reject a settlement (Admin only)

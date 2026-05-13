@@ -1,5 +1,6 @@
 const orderRepository = require('./order.repository');
 const userRepository = require('../users/user.repository');
+const walletRepository = require('../wallet/wallet.repository');
 const db = require('../../config/db');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
@@ -156,7 +157,16 @@ const updateStatus = async (orderId, statusData) => {
 
             if (!alreadyProcessed && order.driver_id) {
                 // Using cod_amount as it represents the cash collected by the driver
-                await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
+                const updatedUser = await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
+                
+                // Record transaction
+                await walletRepository.createTransaction({
+                    driver_id: order.driver_id,
+                    amount: order.cod_amount,
+                    type: 'collection',
+                    order_id: orderId,
+                    balance_after: updatedUser.cash_in_hand
+                }, client);
             }
         }
 

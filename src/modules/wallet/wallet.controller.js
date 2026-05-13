@@ -74,10 +74,32 @@ const approve = async (req, res, next) => {
     }
 };
 
+const getDriverTransactions = async (req, res, next) => {
+    try {
+        const { driverId } = req.params;
+
+        // Authorization: Admin can see all, Driver can only see their own
+        if (req.user.role.toLowerCase() !== 'admin' && req.user.id !== driverId) {
+            const error = new Error('Not authorized to view these transactions');
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const transactions = await walletService.getDriverTransactions(driverId);
+        res.status(200).json({
+            success: true,
+            data: transactions
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getDriverWallet,
     settle,
     listSettlements,
     getDriverSettlements,
+    getDriverTransactions,
     approve
 };

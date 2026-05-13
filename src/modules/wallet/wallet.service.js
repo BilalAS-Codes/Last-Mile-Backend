@@ -50,11 +50,16 @@ const directSettlement = async (driverId, amount, adminId) => {
     return await walletRepository.directSettlementWithTransaction(driverId, amount, adminId);
 };
 
+const getDriverTransactions = async (driverId) => {
+    return await walletRepository.getDriverTransactions(driverId);
+};
+
 module.exports = {
     getDriverWallet,
     submitSettlement,
     listSettlements,
     getDriverSettlements,
     updateSettlement,
-    directSettlement
+    directSettlement,
+    getDriverTransactions
 };
