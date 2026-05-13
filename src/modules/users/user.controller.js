@@ -1,12 +1,10 @@
 const userService = require('./user.service');
+const { sendSuccess } = require('../../utils/response');
 
 const listUsers = async (req, res, next) => {
     try {
         const users = await userService.listAllUsers();
-        res.status(200).json({
-            success: true,
-            data: users
-        });
+        sendSuccess(res, 200, 'Users fetched successfully', users);
     } catch (err) {
         next(err);
     }
@@ -15,10 +13,7 @@ const listUsers = async (req, res, next) => {
 const listDrivers = async (req, res, next) => {
     try {
         const drivers = await userService.getDrivers();
-        res.status(200).json({
-            success: true,
-            data: drivers
-        });
+        sendSuccess(res, 200, 'Drivers fetched successfully', drivers);
     } catch (err) {
         next(err);
     }
@@ -27,10 +22,7 @@ const listDrivers = async (req, res, next) => {
 const listClients = async (req, res, next) => {
     try {
         const clients = await userService.getClients();
-        res.status(200).json({
-            success: true,
-            data: clients
-        });
+        sendSuccess(res, 200, 'Clients fetched successfully', clients);
     } catch (err) {
         next(err);
     }
@@ -42,12 +34,11 @@ const updateDriverStatus = async (req, res, next) => {
         const { is_active } = req.body;
         const updated = await userService.updateStatus(id, is_active);
         if (!updated) {
-            return res.status(404).json({ error: 'Driver not found' });
+            const error = new Error('Driver not found');
+            error.statusCode = 404;
+            throw error;
         }
-        res.status(200).json({
-            success: true,
-            data: updated
-        });
+        sendSuccess(res, 200, 'Driver status updated successfully', updated);
     } catch (err) {
         next(err);
     }
@@ -58,12 +49,11 @@ const update = async (req, res, next) => {
         const { id } = req.params;
         const updated = await userService.updateUser(id, req.body);
         if (!updated) {
-            return res.status(404).json({ error: 'User not found' });
+            const error = new Error('User not found');
+            error.statusCode = 404;
+            throw error;
         }
-        res.status(200).json({
-            success: true,
-            data: updated
-        });
+        sendSuccess(res, 200, 'User updated successfully', updated);
     } catch (err) {
         next(err);
     }
@@ -74,12 +64,11 @@ const deleteUser = async (req, res, next) => {
         const { id } = req.params;
         const deleted = await userService.deleteUser(id);
         if (!deleted) {
-            return res.status(404).json({ error: 'User not found' });
+            const error = new Error('User not found');
+            error.statusCode = 404;
+            throw error;
         }
-        res.status(200).json({
-            success: true,
-            message: 'User deleted successfully'
-        });
+        sendSuccess(res, 200, 'User deleted successfully');
     } catch (err) {
         next(err);
     }
@@ -93,3 +82,4 @@ module.exports = {
     update,
     deleteUser
 };
+

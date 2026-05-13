@@ -7,26 +7,28 @@ const findByEmail = async (email) => {
 };
 
 const findById = async (id) => {
-    const query = 'SELECT id, email, role, name, company_details, vehicle_number, vehicle_type, rating, active FROM users WHERE id = $1';
+    const query = 'SELECT id, email,phone, role, name, company_details, vehicle_number, vehicle_type, rating, active FROM users WHERE id = $1';
     const result = await db.query(query, [id]);
+    console.log(result, 'result')
     return result.rows[0];
 };
 
 const createUser = async (userData) => {
-    const { email, password, role, name, vehicle_number, vehicle_type, company_details } = userData;
+    const { email, password, role, name, phone, vehicle_number, vehicle_type, company_details } = userData;
 
     // Extract fee info if present in company_details
     const fee_type = (company_details?.feeType || 'fixed').toLowerCase();
     const fee_value = company_details?.feeValue || 0;
 
     const query = `
-        INSERT INTO users (email, password, role, name, vehicle_number, vehicle_type, company_details, fee_type, fee_value)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO users (email, password,phone, role, name, vehicle_number, vehicle_type, company_details, fee_type, fee_value)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9 , $10)
         RETURNING id, email, role, name
     `;
     const values = [
         email,
         password,
+        phone,
         role.toLowerCase(),
         name,
         vehicle_number,

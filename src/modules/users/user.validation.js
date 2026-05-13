@@ -14,7 +14,10 @@ const updateUserSchema = Joi.object({
         id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid user ID format' }),
     }),
     body: Joi.object({
-        name: Joi.string().optional(),
+        name: Joi.string().optional().trim().empty("").min(3).messages({
+            'string.min': 'Name must be at least 3 characters long',
+            'any.required': 'Name is required'
+        }),
         email: Joi.string().email().optional().messages({ 'string.email': 'Invalid email format' }),
         role: Joi.string().valid('admin', 'client', 'driver').optional().messages({ 'any.only': 'Invalid role' }),
         active: Joi.boolean().optional(),

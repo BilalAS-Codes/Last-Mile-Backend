@@ -1,13 +1,11 @@
 const walletService = require('./wallet.service');
+const { sendSuccess } = require('../../utils/response');
 
 const getDriverWallet = async (req, res, next) => {
     try {
         const { driverId } = req.params;
         const wallet = await walletService.getDriverWallet(driverId);
-        res.status(200).json({
-            success: true,
-            data: wallet
-        });
+        sendSuccess(res, 200, 'Wallet details fetched successfully', wallet);
     } catch (err) {
         next(err);
     }
@@ -16,12 +14,8 @@ const getDriverWallet = async (req, res, next) => {
 const settle = async (req, res, next) => {
     try {
         const { amount } = req.body;
-        console.log(amount, 'amount')
         const settlement = await walletService.submitSettlement(req.user.id, amount);
-        res.status(201).json({
-            success: true,
-            data: settlement
-        });
+        sendSuccess(res, 201, 'Settlement request submitted successfully', settlement);
     } catch (err) {
         next(err);
     }
@@ -30,10 +24,7 @@ const settle = async (req, res, next) => {
 const listSettlements = async (req, res, next) => {
     try {
         const settlements = await walletService.listSettlements();
-        res.status(200).json({
-            success: true,
-            data: settlements
-        });
+        sendSuccess(res, 200, 'Settlements listed successfully', settlements);
     } catch (err) {
         next(err);
     }
@@ -43,7 +34,6 @@ const getDriverSettlements = async (req, res, next) => {
     try {
         const { driverId } = req.params;
         
-        // Authorization: Admin can see all, Driver can only see their own
         if (req.user.role.toLowerCase() !== 'admin' && req.user.id !== driverId) {
             const error = new Error('Not authorized to view these settlements');
             error.statusCode = 403;
@@ -51,10 +41,7 @@ const getDriverSettlements = async (req, res, next) => {
         }
 
         const settlements = await walletService.getDriverSettlements(driverId);
-        res.status(200).json({
-            success: true,
-            data: settlements
-        });
+        sendSuccess(res, 200, 'Driver settlements fetched successfully', settlements);
     } catch (err) {
         next(err);
     }
@@ -65,10 +52,7 @@ const approve = async (req, res, next) => {
         const { id } = req.params;
         const { status } = req.body;
         const updated = await walletService.updateSettlement(id, status || 'approved', req.user.id);
-        res.status(200).json({
-            success: true,
-            data: updated
-        });
+        sendSuccess(res, 200, `Settlement ${status || 'approved'} successfully`, updated);
     } catch (err) {
         next(err);
     }
@@ -78,7 +62,6 @@ const getDriverTransactions = async (req, res, next) => {
     try {
         const { driverId } = req.params;
 
-        // Authorization: Admin can see all, Driver can only see their own
         if (req.user.role.toLowerCase() !== 'admin' && req.user.id !== driverId) {
             const error = new Error('Not authorized to view these transactions');
             error.statusCode = 403;
@@ -86,10 +69,7 @@ const getDriverTransactions = async (req, res, next) => {
         }
 
         const transactions = await walletService.getDriverTransactions(driverId);
-        res.status(200).json({
-            success: true,
-            data: transactions
-        });
+        sendSuccess(res, 200, 'Driver transactions fetched successfully', transactions);
     } catch (err) {
         next(err);
     }
@@ -103,3 +83,4 @@ module.exports = {
     getDriverTransactions,
     approve
 };
+

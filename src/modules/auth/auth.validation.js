@@ -10,7 +10,8 @@ const registerSchema = Joi.object({
             'string.min': 'Password must be at least 6 characters long',
             'any.required': 'Password is required'
         }),
-        name: Joi.string().required().messages({
+        name: Joi.string().required().trim().empty("").min(3).messages({
+            'string.min': 'Name must be at least 3 characters long',
             'any.required': 'Full name is required'
         }),
         role: Joi.string().valid('admin', 'client', 'driver').required().messages({
@@ -31,6 +32,9 @@ const registerSchema = Joi.object({
                 'any.required': 'Vehicle type is required for drivers'
             }),
             otherwise: Joi.string().allow('', null).optional()
+        }),
+        phone: Joi.string().required().messages({
+            'any.required': 'Phone number is required'
         }),
         company_details: Joi.object({
             phone: Joi.string().required(),

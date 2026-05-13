@@ -1,13 +1,11 @@
 const cashflowService = require('./cashflow.service');
 const walletService = require('../wallet/wallet.service');
+const { sendSuccess } = require('../../utils/response');
 
 const getStats = async (req, res, next) => {
     try {
         const stats = await cashflowService.getDashboardStats();
-        res.status(200).json({
-            success: true,
-            data: stats
-        });
+        sendSuccess(res, 200, 'Dashboard statistics fetched successfully', stats);
     } catch (err) {
         next(err);
     }
@@ -16,10 +14,7 @@ const getStats = async (req, res, next) => {
 const getSettlements = async (req, res, next) => {
     try {
         const settlements = await cashflowService.getSettlementHistory();
-        res.status(200).json({
-            success: true,
-            data: settlements
-        });
+        sendSuccess(res, 200, 'Settlement history fetched successfully', settlements);
     } catch (err) {
         next(err);
     }
@@ -29,10 +24,7 @@ const getDriverSettlements = async (req, res, next) => {
     try {
         const { driverId } = req.params;
         const settlements = await cashflowService.getDriverSettlementHistory(driverId);
-        res.status(200).json({
-            success: true,
-            data: settlements
-        });
+        sendSuccess(res, 200, 'Driver settlement history fetched successfully', settlements);
     } catch (err) {
         next(err);
     }
@@ -42,11 +34,7 @@ const approveSettlement = async (req, res, next) => {
     try {
         const { id } = req.params;
         const approved = await walletService.approveSettlement(id, req.user.id);
-        res.status(200).json({
-            success: true,
-            message: 'Settlement approved and driver cash balance updated',
-            data: approved
-        });
+        sendSuccess(res, 200, 'Settlement approved and driver cash balance updated', approved);
     } catch (err) {
         next(err);
     }
@@ -56,11 +44,7 @@ const directSettlement = async (req, res, next) => {
     try {
         const { driverId, amount } = req.body;
         const settlement = await walletService.directSettlement(driverId, amount, req.user.id);
-        res.status(201).json({
-            success: true,
-            message: 'Settlement processed successfully',
-            data: settlement
-        });
+        sendSuccess(res, 201, 'Settlement processed successfully', settlement);
     } catch (err) {
         next(err);
     }
@@ -73,3 +57,4 @@ module.exports = {
     approveSettlement,
     directSettlement
 };
+
