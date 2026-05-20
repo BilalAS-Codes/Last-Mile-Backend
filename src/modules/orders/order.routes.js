@@ -181,9 +181,9 @@ router.patch('/:id/delivered', protect, authorize('admin', 'driver'), orderContr
 
 /**
  * @swagger
- * /api/orders/{id}:
- *   delete:
- *     summary: Delete an order (Admin only)
+ * /api/orders/{id}/cancel:
+ *   patch:
+ *     summary: Cancel an order (Admin only)
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
@@ -194,10 +194,10 @@ router.patch('/:id/delivered', protect, authorize('admin', 'driver'), orderContr
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Order deleted successfully
+ *         description: Order cancelled successfully
  *       404:
  *         description: Order not found
  */
-router.delete('/:id', protect, authorize('admin'), orderController.remove);
+router.patch('/:id/cancel', protect, authorize('admin'), orderController.cancel);
 
 module.exports = router;

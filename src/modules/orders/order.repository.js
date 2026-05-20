@@ -128,11 +128,6 @@ const updateStatus = async (id, status, codCollected = null, client = db) => {
     return result.rows[0];
 };
 
-const remove = async (id) => {
-    const query = 'DELETE FROM orders WHERE id = $1 RETURNING *';
-    const result = await db.query(query, [id]);
-    return result.rows[0];
-};
 
 module.exports = {
     create,
@@ -141,6 +136,5 @@ module.exports = {
     findByIds,
     update,
     updateStatus,
-    remove,
     findAllAssignedToDrivers
 };

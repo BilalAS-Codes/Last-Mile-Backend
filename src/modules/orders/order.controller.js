@@ -79,11 +79,11 @@ const markAsDelivered = async (req, res, next) => {
     }
 };
 
-const remove = async (req, res, next) => {
+const cancel = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const deleted = await orderService.deleteOrder(id);
-        sendSuccess(res, 200, 'Order deleted successfully', deleted);
+        const cancelled = await orderService.cancelOrder(id);
+        sendSuccess(res, 200, 'Order cancelled successfully', cancelled);
     } catch (err) {
         next(err);
     }
@@ -97,6 +97,6 @@ module.exports = {
     assign,
     updateStatus,
     markAsDelivered,
-    remove
+    cancel
 };
 

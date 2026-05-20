@@ -59,7 +59,7 @@ const generateInvoice = async (client_id, billing_period, due_date) => {
     try {
         await client.query('BEGIN');
 
-        const ordersQuery = 'SELECT id, delivery_fee FROM orders WHERE client_id = $1 AND LOWER(status) = \'delivered\' AND invoice_id IS NULL';
+        const ordersQuery = `SELECT id, delivery_fee FROM orders WHERE client_id = $1 AND LOWER(status) IN ('delivered' , 'canceled') AND invoice_id IS NULL`;
         const ordersResult = await client.query(ordersQuery, [client_id]);
         const orders = ordersResult.rows;
 
@@ -174,7 +174,7 @@ const getRevenueStats = async () => {
 const getRevenueChartData = async () => {
     const chartData = await billingRepository.getRevenueChartData();
     const stats = await billingRepository.getFinancialStats();
-    
+
     return {
         revenue_stats: {
             total_revenue: stats.total_revenue,

@@ -190,10 +190,9 @@ const markAsDelivered = async (orderId) => {
     return await updateStatus(orderId, { status: 'delivered', cod_collected: codCollected });
 };
 
-const deleteOrder = async (orderId) => {
-    const deleted = await orderRepository.remove(orderId);
-    if (!deleted) throw new Error('Order not found');
-    return deleted;
+const cancelOrder = async (orderId) => {
+    const cancelled = await updateStatus(orderId, { status: 'cancelled' });
+    return cancelled;
 };
 
 module.exports = {
@@ -204,5 +203,5 @@ module.exports = {
     assignDriver,
     updateStatus,
     markAsDelivered,
-    deleteOrder
+    cancelOrder
 };
