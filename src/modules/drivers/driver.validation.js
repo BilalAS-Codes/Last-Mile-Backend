@@ -1,8 +1,18 @@
 const Joi = require('joi');
 
 const updateLocationSchema = Joi.object({
-  latitude: Joi.number().required().min(-90).max(90),
-  longitude: Joi.number().required().min(-180).max(180)
+  body: Joi.object({
+    latitude: Joi.number().required().min(-90).max(90).messages({
+      "any.required": "Latitude is required",
+      "number.min": "Latitude must be greater than or equal to -90",
+      "number.max": "Latitude must be less than or equal to 90"
+    }),
+    longitude: Joi.number().required().min(-180).max(180).messages({
+      "any.required": "Longitude is required",
+      "number.min": "Longitude must be greater than or equal to -180",
+      "number.max": "Longitude must be less than or equal to 180"
+    })
+  })
 });
 
 module.exports = {
