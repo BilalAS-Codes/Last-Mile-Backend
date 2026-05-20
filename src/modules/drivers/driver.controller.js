@@ -21,18 +21,18 @@ const getLocations = async (req, res, next) => {
     }
 };
 
-const getDriverLocations = async (req, res, next) => {
+const getDriverLocation = async (req, res, next) => {
     try {
         const { id } = req.params;
 
         if (req.user.role.toLowerCase() !== 'admin' && req.user.id !== id) {
-            const error = new Error('Not authorized to view these locations');
+            const error = new Error('Not authorized to view this location');
             error.statusCode = 403;
             throw error;
         }
 
-        const locations = await driverService.getDriverLocations(id);
-        sendSuccess(res, 200, 'Driver location history fetched successfully', locations);
+        const location = await driverService.getDriverLocation(id);
+        sendSuccess(res, 200, 'Driver location fetched successfully', location);
     } catch (error) {
         next(error);
     }
@@ -41,5 +41,5 @@ const getDriverLocations = async (req, res, next) => {
 module.exports = {
     updateLocation,
     getLocations,
-    getDriverLocations
+    getDriverLocation
 };

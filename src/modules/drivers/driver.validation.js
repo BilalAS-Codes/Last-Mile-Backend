@@ -15,7 +15,7 @@ const updateLocationSchema = Joi.object({
   })
 });
 
-const getDriverLocationsSchema = Joi.object({
+const getDriverLocationSchema = Joi.object({
   params: Joi.object({
     id: Joi.string().uuid().required().messages({ 'string.uuid': 'Invalid driver ID format' }),
   })
@@ -23,5 +23,5 @@ const getDriverLocationsSchema = Joi.object({
 
 module.exports = {
   updateLocationSchema,
-  getDriverLocationsSchema
+  getDriverLocationSchema
 };
