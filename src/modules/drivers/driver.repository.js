@@ -1,30 +1,32 @@
-const knex = require('../../config/db');
+const db = require('../../config/db');
 
-class DriverRepository {
-  async addLocation(driverId, latitude, longitude) {
-    const [location] = await knex('driver_locations').insert({
-      driver_id: driverId,
-      latitude,
-      longitude
-    }).returning('*');
-    return location;
-  }
+const addLocation = async (driverId, latitude, longitude) => {
+    const query = `
+        INSERT INTO driver_locations (driver_id, latitude, longitude)
+        VALUES ($1, $2, $3)
+        RETURNING *;
+    `;
+    const result = await db.query(query, [driverId, latitude, longitude]);
+    return result.rows[0];
+};
 
-  async getLatestLocations() {
+const getLatestLocations = async () => {
     // Gets the most recent location for each driver
     const query = `
-      SELECT DISTINCT ON (driver_id)
-        id,
-        driver_id,
-        latitude,
-        longitude,
-        created_at
-      FROM driver_locations
-      ORDER BY driver_id, created_at DESC;
+        SELECT DISTINCT ON (driver_id)
+            id,
+            driver_id,
+            latitude,
+            longitude,
+            created_at
+        FROM driver_locations
+        ORDER BY driver_id, created_at DESC;
     `;
-    const result = await knex.raw(query);
+    const result = await db.query(query);
     return result.rows || [];
-  }
-}
+};
 
-module.exports = new DriverRepository();
+module.exports = {
+    addLocation,
+    getLatestLocations
+};

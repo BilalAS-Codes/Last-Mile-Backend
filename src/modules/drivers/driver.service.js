@@ -1,15 +1,14 @@
 const driverRepository = require('./driver.repository');
 
-class DriverService {
-  async updateLocation(driverId, latitude, longitude) {
-    const location = await driverRepository.addLocation(driverId, latitude, longitude);
-    return location;
-  }
+const updateLocation = async (driverId, latitude, longitude) => {
+    return await driverRepository.addLocation(driverId, latitude, longitude);
+};
 
-  async getLocations() {
-    const locations = await driverRepository.getLatestLocations();
-    return locations;
-  }
-}
+const getLocations = async () => {
+    return await driverRepository.getLatestLocations();
+};
 
-module.exports = new DriverService();
+module.exports = {
+    updateLocation,
+    getLocations
+};
