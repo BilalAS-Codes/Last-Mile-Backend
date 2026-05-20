@@ -26,7 +26,19 @@ const getLatestLocations = async () => {
     return result.rows || [];
 };
 
+const getDriverLocations = async (driverId) => {
+    const query = `
+        SELECT id, driver_id, latitude, longitude, created_at
+        FROM driver_locations
+        WHERE driver_id = $1
+        ORDER BY created_at DESC;
+    `;
+    const result = await db.query(query, [driverId]);
+    return result.rows || [];
+};
+
 module.exports = {
     addLocation,
-    getLatestLocations
+    getLatestLocations,
+    getDriverLocations
 };

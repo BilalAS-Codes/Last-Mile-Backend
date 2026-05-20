@@ -8,7 +8,12 @@ const getLocations = async () => {
     return await driverRepository.getLatestLocations();
 };
 
+const getDriverLocations = async (driverId) => {
+    return await driverRepository.getDriverLocations(driverId);
+};
+
 module.exports = {
     updateLocation,
-    getLocations
+    getLocations,
+    getDriverLocations
 };

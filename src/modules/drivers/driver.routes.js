@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const driverController = require('./driver.controller');
 const validate = require('../../middleware/validate.middleware');
-const { updateLocationSchema } = require('./driver.validation');
+const { updateLocationSchema, getDriverLocationsSchema } = require('./driver.validation');
 const { protect, authorize } = require('../../middleware/auth.middleware');
 
 /**
@@ -48,5 +48,27 @@ router.post('/location', protect, authorize('driver'), validate(updateLocationSc
  *         description: List of latest locations
  */
 router.get('/locations', protect, authorize('admin', 'client'), driverController.getLocations);
+
+/**
+ * @swagger
+ * /api/drivers/{id}/locations:
+ *   get:
+ *     summary: Get location history of a single driver
+ *     tags: [Drivers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The driver ID
+ *     responses:
+ *       200:
+ *         description: List of driver locations
+ */
+router.get('/:id/locations', protect, authorize('admin', 'driver'), validate(getDriverLocationsSchema), driverController.getDriverLocations);
 
 module.exports = router;
