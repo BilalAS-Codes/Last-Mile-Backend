@@ -50,7 +50,8 @@ const registerSchema = Joi.object({
             billingEmail: Joi.string().email().required()
         }).when('role', { is: 'client', then: Joi.required(), otherwise: Joi.optional() }).messages({
             'any.required': 'Company details are required for clients'
-        })
+        }),
+        currency: Joi.string().trim().max(10).default('SAR').optional()
     })
 });
 

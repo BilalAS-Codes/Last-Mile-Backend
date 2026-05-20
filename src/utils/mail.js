@@ -45,7 +45,7 @@ const sendOTP = async (email, otp) => {
 };
 
 const sendInvoiceNotification = async (email, invoiceData, attachments) => {
-    const { clientName, amount, billingPeriod, dueDate, invoiceId } = invoiceData;
+    const { clientName, amount, billingPeriod, dueDate, invoiceId, currency } = invoiceData;
     const subject = `New Invoice Generated - ${billingPeriod}`;
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -54,7 +54,7 @@ const sendInvoiceNotification = async (email, invoiceData, attachments) => {
             <p>A new invoice has been generated for the billing period <strong>${billingPeriod}</strong>.</p>
             <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <p style="margin: 5px 0;"><strong>Invoice ID:</strong> ${invoiceId}</p>
-                <p style="margin: 5px 0;"><strong>Total Amount:</strong> ${amount} AED</p>
+                <p style="margin: 5px 0;"><strong>Total Amount:</strong> ${amount} ${currency || 'SAR'}</p>
                 <p style="margin: 5px 0;"><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
             </div>
             <p>Please find the attached invoice PDF and order details Excel sheet for your reference.</p>

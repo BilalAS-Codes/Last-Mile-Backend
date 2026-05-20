@@ -1,0 +1,69 @@
+POST Endpoints Supporting Currency
+==================================
+
+1. User Registration
+--------------------
+Endpoint: POST /api/auth/register
+Description: Registers a new user. Clients and drivers can specify their preferred currency (e.g., "SAR", "USD", "EUR"). If not provided, it defaults to "SAR".
+
+Example Payload (Client):
+{
+  "email": "client@example.com",
+  "password": "password123",
+  "role": "client",
+  "name": "Saudi Client",
+  "phone": "+966123456789",
+  "currency": "SAR",
+  "company_details": {
+    "phone": "+966123456789",
+    "address": {
+      "zip": "12345",
+      "city": "Riyadh",
+      "state": "Riyadh Province",
+      "street": "King Fahd Rd"
+    },
+    "feeType": "fixed",
+    "feeValue": 15,
+    "companyName": "Saudi Logistics Corp",
+    "billingEmail": "billing@saudilogistics.com"
+  }
+}
+
+Example Payload (Driver):
+{
+  "email": "driver@example.com",
+  "password": "password123",
+  "role": "driver",
+  "name": "Riyadh Driver",
+  "phone": "+966987654321",
+  "vehicle_number": "ABC-1234",
+  "vehicle_type": "Car",
+  "currency": "SAR"
+}
+
+
+2. Order Creation
+-----------------
+Endpoint: POST /api/orders
+Description: Creates a single delivery order. The order automatically inherits the client's registered currency if not specified, but can be overridden by passing the "currency" field in the body.
+
+Example Payload:
+{
+  "pickup_address": {
+    "lat": 24.7136,
+    "long": 46.6753,
+    "address": "Olaya, Riyadh"
+  },
+  "delivery_address": {
+    "lat": 24.7743,
+    "long": 46.7386,
+    "address": "Al Yasmin, Riyadh"
+  },
+  "customer_name": "John Doe",
+  "customer_phone": "+966555555555",
+  "order_value": 150.00,
+  "delivery_fee": 15.00,
+  "currency": "SAR",
+  "is_cod": true,
+  "cod_amount": 165.00
+}

@@ -15,7 +15,7 @@ const createSettlementWithLock = async (driverId, amount) => {
     try {
         await client.query('BEGIN');
 
-        const userQuery = 'SELECT cash_in_hand, pending_settlement_balance FROM users WHERE id = $1 FOR UPDATE';
+        const userQuery = 'SELECT cash_in_hand, pending_settlement_balance, currency FROM users WHERE id = $1 FOR UPDATE';
         const userRes = await client.query(userQuery, [driverId]);
         const user = userRes.rows[0];
 
@@ -23,15 +23,15 @@ const createSettlementWithLock = async (driverId, amount) => {
 
         const available = parseFloat(user.cash_in_hand || 0);
         if (amount > available) {
-            throw new Error(`Insufficient available cash. You have $${available.toFixed(2)} available.`);
+            throw new Error(`Insufficient available cash. You have ${user.currency || 'SAR'} ${available.toFixed(2)} available.`);
         }
 
         const createSettlementQuery = `
-            INSERT INTO settlements (driver_id, amount, status)
-            VALUES ($1, $2, 'pending')
+            INSERT INTO settlements (driver_id, amount, status, currency)
+            VALUES ($1, $2, 'pending', $3)
             RETURNING *
         `;
-        const settlementRes = await client.query(createSettlementQuery, [driverId, amount]);
+        const settlementRes = await client.query(createSettlementQuery, [driverId, amount, user.currency || 'SAR']);
 
         const updateBalancesQuery = 'UPDATE users SET cash_in_hand = cash_in_hand - $1, pending_settlement_balance = pending_settlement_balance + $1 WHERE id = $2 RETURNING cash_in_hand';
         const updatedUserRes = await client.query(updateBalancesQuery, [amount, driverId]);
@@ -196,7 +196,7 @@ const directSettlementWithTransaction = async (driverId, amount, adminId) => {
     try {
         await client.query('BEGIN');
 
-        const userQuery = 'SELECT cash_in_hand, pending_settlement_balance FROM users WHERE id = $1 FOR UPDATE';
+        const userQuery = 'SELECT cash_in_hand, pending_settlement_balance, currency FROM users WHERE id = $1 FOR UPDATE';
         const userRes = await client.query(userQuery, [driverId]);
         const user = userRes.rows[0];
 
@@ -204,15 +204,15 @@ const directSettlementWithTransaction = async (driverId, amount, adminId) => {
 
         const available = parseFloat(user.cash_in_hand || 0);
         if (amount > available) {
-            throw new Error(`Cannot settle $${amount}. Only $${available.toFixed(2)} is available.`);
+            throw new Error(`Cannot settle ${user.currency || 'SAR'} ${amount}. Only ${user.currency || 'SAR'} ${available.toFixed(2)} is available.`);
         }
 
         const createSettlementQuery = `
-            INSERT INTO settlements (driver_id, amount, status, admin_id, created_at, updated_at)
-            VALUES ($1, $2, 'approved', $3, NOW(), NOW())
+            INSERT INTO settlements (driver_id, amount, status, admin_id, currency, created_at, updated_at)
+            VALUES ($1, $2, 'approved', $3, $4, NOW(), NOW())
             RETURNING *
         `;
-        const settlementRes = await client.query(createSettlementQuery, [driverId, amount, adminId]);
+        const settlementRes = await client.query(createSettlementQuery, [driverId, amount, adminId, user.currency || 'SAR']);
 
         const updateDriverQuery = `
             UPDATE users 

@@ -1,13 +1,13 @@
 const db = require('../../config/db');
 
 const createInvoice = async (invoiceData, client = db) => {
-    const { client_id, total_amount, billing_period, orders, due_date, extra_charges } = invoiceData;
+    const { client_id, total_amount, billing_period, orders, due_date, extra_charges, currency } = invoiceData;
     const query = `
-        INSERT INTO invoices (client_id, total_amount, billing_period, status, orders, due_date, extra_charges)
-        VALUES ($1, $2, $3, 'unpaid', $4, $5, $6)
+        INSERT INTO invoices (client_id, total_amount, billing_period, status, orders, due_date, extra_charges, currency)
+        VALUES ($1, $2, $3, 'unpaid', $4, $5, $6, $7)
         RETURNING *
     `;
-    const result = await client.query(query, [client_id, total_amount, billing_period, JSON.stringify(orders || []), due_date, extra_charges || 0]);
+    const result = await client.query(query, [client_id, total_amount, billing_period, JSON.stringify(orders || []), due_date, extra_charges || 0, currency || 'SAR']);
     return result.rows[0];
 };
 

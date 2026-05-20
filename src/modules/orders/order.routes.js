@@ -27,6 +27,8 @@ const { protect, authorize } = require('../../middleware/auth.middleware');
  *         order_value: { type: number, example: 1200 }
  *         cod_amount: { type: number, example: 1200 }
  *         delivery_fee: { type: number, example: 15 }
+ *         currency: { type: string, example: 'SAR' }
+ *         client_id: { type: string, example: 'c4ce6b88-2ee4-4d7d-9951-8c45da361196', description: 'Create order on behalf of another client (Admin only)' }
  */
 
 /**

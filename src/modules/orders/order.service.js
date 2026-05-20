@@ -8,7 +8,12 @@ const { orderBodySchema } = require('./order.validation');
 
 const createOrder = async (client_id, orderData) => {
     const tracking_id = 'TRX' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    return await orderRepository.create({ ...orderData, client_id, tracking_id });
+
+    // Fetch client to get their registered currency
+    const clientUser = await userRepository.findById(client_id);
+    const currency = clientUser?.currency || 'SAR';
+
+    return await orderRepository.create({ ...orderData, client_id, tracking_id, currency });
 };
 
 const bulkCreateOrders = async (client_id, fileBuffer) => {
@@ -26,6 +31,10 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
         error.statusCode = 400;
         throw error;
     }
+
+    // Fetch client to get their registered currency
+    const clientUser = await userRepository.findById(client_id);
+    const currency = clientUser?.currency || 'SAR';
 
     const requiredHeaders = [
         'pickup_address', 'pickup_lat', 'pickup_long',
@@ -74,6 +83,7 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
                     customer_phone: row.customer_phone,
                     order_value: parseFloat(row.order_value),
                     delivery_fee: parseFloat(row.delivery_fee),
+                    currency: currency,
                     cod_amount: row.cod_amount ? parseFloat(row.cod_amount) : 0,
                     is_cod: parseFloat(row.cod_amount || 0) > 0
                 };
@@ -158,7 +168,7 @@ const updateStatus = async (orderId, statusData) => {
             if (!alreadyProcessed && order.driver_id) {
                 // Using cod_amount as it represents the cash collected by the driver
                 const updatedUser = await userRepository.incrementCashInHand(order.driver_id, order.cod_amount, client);
-                
+
                 // Record transaction
                 await walletRepository.createTransaction({
                     driver_id: order.driver_id,

@@ -46,7 +46,8 @@ class InvoiceGenerator {
     }
 
     async generatePDF(invoiceData, orders) {
-        const { clientName, amount, billingPeriod, dueDate, invoiceId, extra_charges } = invoiceData;
+        const { clientName, amount, billingPeriod, dueDate, invoiceId, extra_charges, currency } = invoiceData;
+        const currencyStr = currency || 'SAR';
 
         const htmlContent = `
         <!DOCTYPE html>
@@ -101,20 +102,20 @@ class InvoiceGenerator {
                     <tr>
                         <td>Delivery Service Fees (${billingPeriod})</td>
                         <td style="text-align: center;">${orders.length}</td>
-                        <td style="text-align: right;">${(parseFloat(amount) - parseFloat(extra_charges || 0)).toFixed(2)} AED</td>
+                        <td style="text-align: right;">${(parseFloat(amount) - parseFloat(extra_charges || 0)).toFixed(2)} ${currencyStr}</td>
                     </tr>
                     ${extra_charges > 0 ? `
                     <tr>
                         <td>Extra Charges / Handling Fees</td>
                         <td style="text-align: center;">-</td>
-                        <td style="text-align: right;">${parseFloat(extra_charges).toFixed(2)} AED</td>
+                        <td style="text-align: right;">${parseFloat(extra_charges).toFixed(2)} ${currencyStr}</td>
                     </tr>
                     ` : ''}
                 </tbody>
             </table>
 
             <div class="totals">
-                <div class="total-row">Total Amount: ${parseFloat(amount).toFixed(2)} AED</div>
+                <div class="total-row">Total Amount: ${parseFloat(amount).toFixed(2)} ${currencyStr}</div>
             </div>
 
             <div class="footer">

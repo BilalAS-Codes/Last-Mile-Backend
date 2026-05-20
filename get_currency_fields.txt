@@ -1,0 +1,82 @@
+GET Endpoints Returning Currency
+===============================
+
+All standard GET endpoints automatically return the "currency" field in their JSON responses because the column is populated in the database.
+
+1. GET /api/auth/me
+-------------------
+Description: Returns the logged-in user's profile details.
+Response contains:
+{
+  "id": "...",
+  "name": "...",
+  "email": "...",
+  "role": "client",
+  "currency": "SAR",
+  ...
+}
+
+2. GET /api/users
+-----------------
+Endpoints: 
+- GET /api/users
+- GET /api/users/clients
+- GET /api/users/drivers
+- GET /api/users/:id
+Description: Returns user/client/driver profile records.
+Response contains:
+{
+  "id": "...",
+  "name": "...",
+  "role": "driver",
+  "currency": "SAR",
+  ...
+}
+
+3. GET /api/orders
+------------------
+Endpoints:
+- GET /api/orders
+- GET /api/orders/:id
+- GET /api/orders/driver/:driverId
+Description: Returns single or list of orders.
+Response contains:
+{
+  "id": "...",
+  "tracking_id": "...",
+  "order_value": 150.00,
+  "delivery_fee": 15.00,
+  "currency": "SAR",
+  ...
+}
+
+4. GET /api/billing/invoices
+----------------------------
+Endpoints:
+- GET /api/billing/invoices
+- GET /api/billing/invoices/client/:clientId
+Description: Returns single or list of invoices.
+Response contains:
+{
+  "id": "...",
+  "total_amount": 165.00,
+  "extra_charges": 15.00,
+  "currency": "SAR",
+  "status": "unpaid",
+  ...
+}
+
+5. GET /api/wallet/settlements
+------------------------------
+Endpoints:
+- GET /api/wallet/settlements
+- GET /api/wallet/settlements/driver/:driverId
+Description: Returns driver settlement history.
+Response contains:
+{
+  "id": "...",
+  "amount": 100.00,
+  "currency": "SAR",
+  "status": "pending",
+  ...
+}

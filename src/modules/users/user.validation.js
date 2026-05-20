@@ -45,6 +45,7 @@ const updateUserSchema = Joi.object({
             companyName: Joi.string().optional(),
             billingEmail: Joi.string().email().optional()
         }).optional(),
+        currency: Joi.string().trim().max(10).optional(),
     }).min(1).messages({ 'object.min': 'At least one field must be provided for update' })
 });
 

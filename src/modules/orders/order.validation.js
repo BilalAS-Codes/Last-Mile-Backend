@@ -21,6 +21,8 @@ const orderBodySchema = Joi.object({
         'number.min': 'Delivery fee cannot be less than 1',
         'any.required': 'Delivery fee is required'
     }),
+    currency: Joi.string().trim().max(10).optional(),
+    client_id: Joi.string().uuid().optional(),
     is_cod: Joi.boolean().default(false),
     cod_amount: Joi.number().when('is_cod', { is: true, then: Joi.required(), otherwise: Joi.optional() }).messages({
         'any.required': 'COD amount is required when order is COD'

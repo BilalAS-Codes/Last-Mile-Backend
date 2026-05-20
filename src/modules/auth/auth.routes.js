@@ -46,6 +46,9 @@ const { protect } = require('../../middleware/auth.middleware');
  *           type: string
  *           enum: [admin, client, driver]
  *           example: client
+ *         currency:
+ *           type: string
+ *           example: SAR
  *         vehicle_number:
  *           type: string
  *           example: ABC-1234

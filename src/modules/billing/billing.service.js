@@ -26,7 +26,8 @@ const notifyClient = async (clientId, invoice) => {
                 billingPeriod: invoice.billing_period,
                 dueDate: invoice.due_date,
                 invoiceId: invoice.id,
-                extra_charges: invoice.extra_charges
+                extra_charges: invoice.extra_charges,
+                currency: invoice.currency || user.currency || 'SAR'
             }, orders);
 
             const attachments = [
@@ -45,7 +46,8 @@ const notifyClient = async (clientId, invoice) => {
                 amount: invoice.total_amount,
                 billingPeriod: invoice.billing_period,
                 dueDate: invoice.due_date,
-                invoiceId: invoice.id
+                invoiceId: invoice.id,
+                currency: invoice.currency || user.currency || 'SAR'
             }, attachments);
             console.log(`Invoice notification with attachments sent to ${billingEmail}`);
         }
@@ -58,6 +60,10 @@ const generateInvoice = async (client_id, billing_period, due_date) => {
     const client = await db.pool.connect();
     try {
         await client.query('BEGIN');
+
+        // Fetch client to get their registered currency
+        const clientUser = await userRepository.findById(client_id);
+        const currency = clientUser?.currency || 'SAR';
 
         const ordersQuery = `SELECT id, delivery_fee FROM orders WHERE client_id = $1 AND LOWER(status) IN ('delivered' , 'canceled') AND invoice_id IS NULL`;
         const ordersResult = await client.query(ordersQuery, [client_id]);
@@ -76,7 +82,8 @@ const generateInvoice = async (client_id, billing_period, due_date) => {
             billing_period,
             orders: orderIds,
             due_date,
-            extra_charges: 0
+            extra_charges: 0,
+            currency
         }, client);
 
         await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
@@ -125,6 +132,10 @@ const createInvoiceWithFees = async (orderIds, billing_period, due_date, extra_c
             throw new Error('All orders must belong to the same client');
         }
 
+        // Fetch client to get their registered currency
+        const clientUser = await userRepository.findById(clientId);
+        const currency = clientUser?.currency || 'SAR';
+
         const ordersTotal = orders.reduce((sum, order) => sum + parseFloat(order.delivery_fee || 0), 0);
         const total_amount = ordersTotal + parseFloat(extra_charges || 0);
 
@@ -134,7 +145,8 @@ const createInvoiceWithFees = async (orderIds, billing_period, due_date, extra_c
             billing_period,
             orders: orderIds,
             due_date,
-            extra_charges
+            extra_charges,
+            currency
         }, client);
 
         await billingRepository.linkOrdersToInvoice(orderIds, invoice.id, client);
