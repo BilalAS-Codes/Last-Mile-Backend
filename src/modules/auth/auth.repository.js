@@ -60,11 +60,55 @@ const updatePassword = async (email, hashedPassword) => {
     return result.rows[0];
 };
 
+const createRefreshToken = async (userId, tokenHash, expiresAt) => {
+    const query = `
+        INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+        VALUES ($1, $2, $3)
+        RETURNING *
+    `;
+    const result = await db.query(query, [userId, tokenHash, expiresAt]);
+    return result.rows[0];
+};
+
+const findRefreshToken = async (tokenHash) => {
+    const query = 'SELECT * FROM refresh_tokens WHERE token_hash = $1';
+    const result = await db.query(query, [tokenHash]);
+    return result.rows[0];
+};
+
+const revokeRefreshToken = async (tokenHash) => {
+    const query = `
+        UPDATE refresh_tokens
+        SET is_revoked = true, updated_at = NOW()
+        WHERE token_hash = $1
+        RETURNING *
+    `;
+    const result = await db.query(query, [tokenHash]);
+    return result.rows[0];
+};
+
+const deleteRefreshToken = async (tokenHash) => {
+    const query = 'DELETE FROM refresh_tokens WHERE token_hash = $1 RETURNING *';
+    const result = await db.query(query, [tokenHash]);
+    return result.rows[0];
+};
+
+const deleteUserRefreshTokens = async (userId) => {
+    const query = 'DELETE FROM refresh_tokens WHERE user_id = $1 RETURNING *';
+    const result = await db.query(query, [userId]);
+    return result.rows;
+};
+
 module.exports = {
     findByEmail,
     findById,
     createUser,
     updateOTP,
     verifyOTP,
-    updatePassword
+    updatePassword,
+    createRefreshToken,
+    findRefreshToken,
+    revokeRefreshToken,
+    deleteRefreshToken,
+    deleteUserRefreshTokens
 };

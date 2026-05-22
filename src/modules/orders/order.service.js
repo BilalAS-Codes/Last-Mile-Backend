@@ -8,10 +8,10 @@ const { orderBodySchema } = require('./order.validation');
 
 const createOrder = async (client_id, orderData) => {
     const tracking_id = 'TRX' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    console.log(orderData, 'order data')
 
     // Fetch client to get their registered currency
-    const clientUser = await userRepository.findById(client_id);
-    const currency = clientUser?.currency || 'SAR';
+    const currency = orderData?.currency || 'SAR';
 
     return await orderRepository.create({ ...orderData, client_id, tracking_id, currency });
 };

@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
+const authRepository = require('../modules/auth/auth.repository');
 
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
     let token;
 
     if (
@@ -17,7 +18,19 @@ const protect = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        
+        // Verify user exists and is active
+        const user = await authRepository.findById(decoded.id);
+        if (!user || !user.active) {
+            return res.status(401).json({ error: 'User is inactive or deleted' });
+        }
+
+        req.user = {
+            id: user.id,
+            role: user.role.toLowerCase(),
+            name: user.name,
+            email: user.email
+        };
         next();
     } catch (err) {
         return res.status(401).json({ error: 'Token is invalid or expired' });

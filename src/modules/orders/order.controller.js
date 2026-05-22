@@ -4,6 +4,7 @@ const { sendSuccess } = require('../../utils/response');
 const create = async (req, res, next) => {
     try {
         const order = await orderService.createOrder(req.user.id, req.body);
+        
         sendSuccess(res, 201, 'Order created successfully', order);
     } catch (err) {
         next(err);
