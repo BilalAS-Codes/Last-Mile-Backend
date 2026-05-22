@@ -10,8 +10,12 @@ const options = {
     },
     servers: [
       {
+        url: '/',
+        description: 'Current Host (Dynamic)',
+      },
+      {
         url: 'http://localhost:5005',
-        description: 'Development server',
+        description: 'Development server (Localhost)',
       },
       {
         url: 'https://last-mile-backend-m63f.onrender.com',

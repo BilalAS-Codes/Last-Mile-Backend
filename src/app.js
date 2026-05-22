@@ -20,7 +20,13 @@ const app = express();
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Echo back the request origin dynamically, allowing any origin to request with or without credentials
+        callback(null, true);
+    },
+    credentials: true
+}));
 app.use(morgan('dev'));
 app.use(express.json());
 
