@@ -70,7 +70,6 @@ const login = async (email, password) => {
     const refreshToken = await saveAndGenerateRefreshToken(user.id, role);
 
     return {
-        token: accessToken,
         accessToken,
         refreshToken,
         user: {
@@ -104,7 +103,6 @@ const driverLogin = async (email, password) => {
     const refreshToken = await saveAndGenerateRefreshToken(user.id, 'driver');
 
     return {
-        token: accessToken,
         accessToken,
         refreshToken,
         user: {
@@ -150,7 +148,7 @@ const resetPassword = async (email, otp, newPassword) => {
     return { message: 'Password reset successful' };
 };
 
-const refresh = async (plainRefreshToken) => {
+const refresh = async (plainRefreshToken, source) => {
     if (!plainRefreshToken) {
         const error = new Error('Refresh token is required');
         error.statusCode = 400;
@@ -175,6 +173,23 @@ const refresh = async (plainRefreshToken) => {
     }
 
     const role = user.role.toLowerCase();
+
+    // Enforce role-based refresh token sources:
+    // - Drivers: Must be in body or header (cannot use cookie)
+    // - Admins/Clients: Must be in cookie (cannot use body/header)
+    if (role === 'driver') {
+        if (source === 'cookie') {
+            const error = new Error('Drivers must provide refresh token in request body or headers');
+            error.statusCode = 400;
+            throw error;
+        }
+    } else {
+        if (source !== 'cookie') {
+            const error = new Error('Admins/Clients must provide refresh token in a cookie');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
 
     // Check if revoked (reuse detection)
     if (refreshTokenDoc.is_revoked) {
@@ -219,7 +234,6 @@ const refresh = async (plainRefreshToken) => {
     const newAccessToken = generateAccessToken(user.id, role);
 
     return {
-        token: newAccessToken,
         accessToken: newAccessToken,
         refreshToken: newPlainRefreshToken,
         user: {

@@ -13,13 +13,13 @@ const parseCookies = (cookieHeader) => {
 
 const getRefreshToken = (req) => {
     if (req.body && req.body.refreshToken) {
-        return req.body.refreshToken;
+        return { token: req.body.refreshToken, source: 'body' };
     }
     if (req.headers && req.headers['x-refresh-token']) {
-        return req.headers['x-refresh-token'];
+        return { token: req.headers['x-refresh-token'], source: 'header' };
     }
     const cookies = parseCookies(req.headers.cookie);
-    return cookies.refreshToken;
+    return { token: cookies.refreshToken, source: 'cookie' };
 };
 
 const setRefreshTokenCookie = (res, refreshToken) => {
@@ -63,7 +63,6 @@ const driverLogin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         const result = await authService.driverLogin(email, password);
-        setRefreshTokenCookie(res, result.refreshToken);
         sendSuccess(res, 200, 'Driver login successful', result);
     } catch (err) {
         next(err);
@@ -101,9 +100,11 @@ const resetPassword = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
     try {
-        const refreshToken = getRefreshToken(req);
-        const result = await authService.refresh(refreshToken);
-        setRefreshTokenCookie(res, result.refreshToken);
+        const { token, source } = getRefreshToken(req);
+        const result = await authService.refresh(token, source);
+        if (result.user && result.user.role !== 'driver') {
+            setRefreshTokenCookie(res, result.refreshToken);
+        }
         sendSuccess(res, 200, 'Token refreshed successfully', result);
     } catch (err) {
         clearRefreshTokenCookie(res);
@@ -113,8 +114,8 @@ const refresh = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
     try {
-        const refreshToken = getRefreshToken(req);
-        await authService.logout(refreshToken);
+        const { token } = getRefreshToken(req);
+        await authService.logout(token);
         clearRefreshTokenCookie(res);
         sendSuccess(res, 200, 'Logout successful', null);
     } catch (err) {
