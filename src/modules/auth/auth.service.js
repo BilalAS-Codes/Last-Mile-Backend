@@ -16,7 +16,7 @@ const generateAccessToken = (userId, role) => {
     return jwt.sign(
         { id: userId, role: role.toLowerCase() },
         process.env.JWT_SECRET,
-        { expiresIn: '1m' } // Short-lived access token
+        { expiresIn: '24h' } // Short-lived access token
     );
 };
 
