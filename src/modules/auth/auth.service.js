@@ -150,8 +150,11 @@ const resetPassword = async (email, otp, newPassword) => {
 
 const refresh = async (plainRefreshToken, source) => {
     if (!plainRefreshToken) {
-        const error = new Error('Refresh token is required');
-        error.statusCode = 400;
+        const message = source === 'cookie'
+            ? 'Refresh token cookie is missing'
+            : 'Refresh token is required';
+        const error = new Error(message);
+        error.statusCode = 401;
         throw error;
     }
 

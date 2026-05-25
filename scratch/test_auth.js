@@ -54,7 +54,7 @@ const runTests = async () => {
 
         // --- TEST 2: Refresh and Rotation ---
         console.log('\n[Test 2] Refreshing token...');
-        const refreshResult = await authService.refresh(tokenString);
+        const refreshResult = await authService.refresh(tokenString, 'cookie');
         console.log('SUCCESS: Token refreshed successfully. New token: ', refreshResult.refreshToken);
         
         // Verify rotation: old token is revoked
@@ -77,7 +77,7 @@ const runTests = async () => {
         // --- TEST 3: Token Reuse Detection ---
         console.log('\n[Test 3] Attempting to reuse revoked old token...');
         try {
-            await authService.refresh(tokenString);
+            await authService.refresh(tokenString, 'cookie');
             throw new Error('FAIL: Reuse of old token did not fail.');
         } catch (err) {
             if (err.message.includes('Token reuse detected')) {
@@ -108,7 +108,7 @@ const runTests = async () => {
         );
         
         try {
-            await authService.refresh(inactiveAdminToken);
+            await authService.refresh(inactiveAdminToken, 'cookie');
             throw new Error('FAIL: Inactive admin refresh did not fail.');
         } catch (err) {
             if (err.message.includes('Session expired due to inactivity')) {
@@ -136,9 +136,33 @@ const runTests = async () => {
             [driver.id, driverHash, new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000), lastActiveTime]
         );
         
-        const driverRefreshResult = await authService.refresh(driverToken);
+        const driverRefreshResult = await authService.refresh(driverToken, 'body');
         console.log('SUCCESS: Driver refreshed successfully despite 25h inactivity.');
         console.log('New driver refresh token: ', driverRefreshResult.refreshToken);
+
+        // --- TEST 6: Missing Refresh Token / Cookie Handling ---
+        console.log('\n[Test 6] Testing missing refresh token/cookie handling...');
+        try {
+            await authService.refresh(undefined, 'cookie');
+            throw new Error('FAIL: Missing refresh token in cookie did not fail.');
+        } catch (err) {
+            if (err.statusCode === 401 && err.message.includes('Refresh token cookie is missing')) {
+                console.log('SUCCESS: Missing cookie thrown as 401 with correct message:', err.message);
+            } else {
+                throw new Error(`FAIL: Missing cookie error did not return expected status/message. Got status: ${err.statusCode}, message: ${err.message}`);
+            }
+        }
+
+        try {
+            await authService.refresh(undefined, 'body');
+            throw new Error('FAIL: Missing refresh token in body did not fail.');
+        } catch (err) {
+            if (err.statusCode === 401 && err.message.includes('Refresh token is required')) {
+                console.log('SUCCESS: Missing body token thrown as 401 with correct message:', err.message);
+            } else {
+                throw new Error(`FAIL: Missing body token error did not return expected status/message. Got status: ${err.statusCode}, message: ${err.message}`);
+            }
+        }
 
         // Clean up
         await db.query("DELETE FROM refresh_tokens WHERE user_id IN ($1, $2)", [admin.id, driver.id]);

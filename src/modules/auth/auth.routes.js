@@ -212,9 +212,9 @@ router.get('/me', protect, authController.getMe);
  *       200:
  *         description: Token refreshed successfully
  *       400:
- *         description: Refresh token is required
+ *         description: Invalid token delivery channel (e.g. driver using cookie or admin not using cookie)
  *       401:
- *         description: Invalid or expired refresh token
+ *         description: Refresh token is missing, invalid, or expired
  */
 router.post('/refresh', authController.refresh);
 
