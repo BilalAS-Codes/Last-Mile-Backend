@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('./auth.controller');
 const validate = require('../../middleware/validate.middleware');
-const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } = require('./auth.validation');
+const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyLoginOtpSchema } = require('./auth.validation');
 const { protect } = require('../../middleware/auth.middleware');
 
 /**
@@ -133,6 +133,33 @@ router.post('/login', validate(loginSchema), authController.login);
  *         description: Invalid credentials
  */
 router.post('/driver/login', validate(loginSchema), authController.driverLogin);
+
+/**
+ * @swagger
+ * /api/auth/verify-login-otp:
+ *   post:
+ *     summary: Verify 2-step verification login OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *             properties:
+ *               email: { type: string, format: email }
+ *               otp: { type: string, example: '123456' }
+ *     responses:
+ *       200:
+ *         description: Verification successful, returns access and refresh tokens
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+router.post('/verify-login-otp', validate(verifyLoginOtpSchema), authController.verifyLoginOtp);
+
 
 /**
  * @swagger

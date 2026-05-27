@@ -93,9 +93,23 @@ const resetPasswordSchema = Joi.object({
     })
 });
 
+const verifyLoginOtpSchema = Joi.object({
+    body: Joi.object({
+        email: Joi.string().email().required().messages({
+            'string.email': 'Invalid email format',
+            'any.required': 'Email is required'
+        }),
+        otp: Joi.string().length(6).required().messages({
+            'string.length': 'OTP must be exactly 6 characters',
+            'any.required': 'OTP is required'
+        }),
+    })
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
+    verifyLoginOtpSchema,
 };

@@ -2,12 +2,9 @@ const app = require('./app');
 
 const PORT = process.env.PORT || 5000;
 
-console.log('Attempting to start server...');
 
 const server = app.listen(PORT, () => {
     console.log(`[SUCCESS] Server is listening on port ${PORT}`);
-    console.log(`[INFO] Node version: ${process.version}`);
-    console.log(`[INFO] Environment: ${process.env.NODE_ENV}`);
 });
 
 // Keep-alive interval to prevent process from exiting if event loop is empty

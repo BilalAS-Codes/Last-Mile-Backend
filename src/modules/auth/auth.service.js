@@ -2,7 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const authRepository = require('./auth.repository');
-const { sendOTP } = require('../../utils/mail');
+const { sendOTP, sendLoginOTP } = require('../../utils/mail');
+const { sendSMS } = require('../../utils/sms');
 
 const hashToken = (token) => {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -66,18 +67,17 @@ const login = async (email, password) => {
         throw new Error('Invalid credentials');
     }
 
-    const accessToken = generateAccessToken(user.id, role);
-    const refreshToken = await saveAndGenerateRefreshToken(user.id, role);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = hashToken(otp);
+    const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+    await authRepository.updateOTP(user.email, hashedOtp, expiry);
+    await sendLoginOTP(user.email, otp);
 
     return {
-        accessToken,
-        refreshToken,
-        user: {
-            id: user.id,
-            email: user.email,
-            role,
-            name: user.name
-        }
+        step2Required: true,
+        email: user.email,
+        message: 'OTP sent to email'
     };
 };
 
@@ -99,8 +99,38 @@ const driverLogin = async (email, password) => {
         throw new Error('Invalid credentials');
     }
 
-    const accessToken = generateAccessToken(user.id, 'driver');
-    const refreshToken = await saveAndGenerateRefreshToken(user.id, 'driver');
+    if (!user.phone) {
+        throw new Error('Driver does not have a registered phone number');
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = hashToken(otp);
+    const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+    await authRepository.updateOTP(user.email, hashedOtp, expiry);
+    await sendSMS(user.phone, `Your Last Mile login OTP is: ${otp}. Valid for 10 minutes.`);
+
+    return {
+        step2Required: true,
+        email: user.email,
+        phone: user.phone,
+        message: 'OTP sent to mobile number'
+    };
+};
+
+const verifyLoginOtp = async (email, otp) => {
+    const hashedOtp = hashToken(otp);
+    const user = await authRepository.verifyOTP(email, hashedOtp);
+    if (!user) {
+        throw new Error('Invalid or expired OTP');
+    }
+
+    // Clear OTP and expiry
+    await authRepository.updateOTP(email, null, null);
+
+    const role = user.role.toLowerCase();
+    const accessToken = generateAccessToken(user.id, role);
+    const refreshToken = await saveAndGenerateRefreshToken(user.id, role);
 
     return {
         accessToken,
@@ -108,7 +138,7 @@ const driverLogin = async (email, password) => {
         user: {
             id: user.id,
             email: user.email,
-            role: 'driver',
+            role,
             name: user.name
         }
     };
@@ -129,16 +159,18 @@ const forgotPassword = async (email) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = hashToken(otp);
     const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
 
-    await authRepository.updateOTP(email, otp, expiry);
+    await authRepository.updateOTP(email, hashedOtp, expiry);
     await sendOTP(email, otp);
 
     return { message: 'OTP sent to email' };
 };
 
 const resetPassword = async (email, otp, newPassword) => {
-    const user = await authRepository.verifyOTP(email, otp);
+    const hashedOtp = hashToken(otp);
+    const user = await authRepository.verifyOTP(email, hashedOtp);
     if (!user) {
         throw new Error('Invalid or expired OTP');
     }
@@ -258,6 +290,7 @@ module.exports = {
     register,
     login,
     driverLogin,
+    verifyLoginOtp,
     getMe,
     forgotPassword,
     resetPassword,

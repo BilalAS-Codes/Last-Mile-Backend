@@ -52,8 +52,7 @@ const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         const result = await authService.login(email, password);
-        setRefreshTokenCookie(res, result.refreshToken);
-        sendSuccess(res, 200, 'Login successful', result);
+        sendSuccess(res, 200, result.message || 'OTP sent successfully', result);
     } catch (err) {
         next(err);
     }
@@ -63,7 +62,20 @@ const driverLogin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         const result = await authService.driverLogin(email, password);
-        sendSuccess(res, 200, 'Driver login successful', result);
+        sendSuccess(res, 200, result.message || 'OTP sent successfully', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const verifyLoginOtp = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        const result = await authService.verifyLoginOtp(email, otp);
+        if (result.user && result.user.role !== 'driver') {
+            setRefreshTokenCookie(res, result.refreshToken);
+        }
+        sendSuccess(res, 200, 'Verification successful', result);
     } catch (err) {
         next(err);
     }
@@ -127,6 +139,7 @@ module.exports = {
     register,
     login,
     driverLogin,
+    verifyLoginOtp,
     getMe,
     forgotPassword,
     resetPassword,
