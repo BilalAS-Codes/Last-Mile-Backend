@@ -20,7 +20,7 @@ const getActiveDrivers = async () => {
 };
 
 const getClients = async () => {
-    const query = "SELECT id, email, name, active, company_details, fee_type, fee_value, currency, created_at FROM users WHERE LOWER(role) = 'client' ORDER BY created_at DESC";
+    const query = "SELECT id, email, name, active, company_details, fee_type, fee_value, included_distance, extra_distance_fee, currency, created_at FROM users WHERE LOWER(role) = 'client' ORDER BY created_at DESC";
     const result = await db.query(query);
     return result.rows;
 };
@@ -32,7 +32,7 @@ const updateDriverStatus = async (id, active) => {
 };
 
 const findById = async (id) => {
-    const query = 'SELECT id, email, role, name, vehicle_number, vehicle_type, active, company_details, fee_type, fee_value, cash_in_hand, currency FROM users WHERE id = $1';
+    const query = 'SELECT id, email, role, name, vehicle_number, vehicle_type, active, company_details, fee_type, fee_value, cash_in_hand, currency, included_distance, extra_distance_fee FROM users WHERE id = $1';
     const result = await db.query(query, [id]);
     return result.rows[0];
 };

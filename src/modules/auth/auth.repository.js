@@ -6,8 +6,14 @@ const findByEmail = async (email) => {
     return result.rows[0];
 };
 
+const findByPhone = async (phone) => {
+    const query = 'SELECT * FROM users WHERE phone = $1 AND role = $2';
+    const result = await db.query(query, [phone, 'driver']);
+    return result.rows[0];
+};
+
 const findById = async (id) => {
-    const query = 'SELECT id, email,phone, role, name, company_details, vehicle_number, vehicle_type, rating, active, currency FROM users WHERE id = $1';
+    const query = 'SELECT id, email, phone, role, name, company_details, vehicle_number, vehicle_type, rating, active, currency, included_distance, extra_distance_fee FROM users WHERE id = $1';
     const result = await db.query(query, [id]);
     console.log(result, 'result')
     return result.rows[0];
@@ -19,11 +25,13 @@ const createUser = async (userData) => {
     // Extract fee info if present in company_details
     const fee_type = (company_details?.feeType || 'fixed').toLowerCase();
     const fee_value = company_details?.feeValue || 0;
+    const included_distance = company_details?.includedDistance !== undefined ? company_details.includedDistance : 5.00;
+    const extra_distance_fee = company_details?.extraDistanceFee !== undefined ? company_details.extraDistanceFee : 2.00;
 
     const query = `
-        INSERT INTO users (email, password,phone, role, name, vehicle_number, vehicle_type, company_details, fee_type, fee_value, currency)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9 , $10, $11)
-        RETURNING id, email, role, name, currency
+        INSERT INTO users (email, password, phone, role, name, vehicle_number, vehicle_type, company_details, fee_type, fee_value, included_distance, extra_distance_fee, currency)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id, email, role, name, currency, included_distance, extra_distance_fee
     `;
     const values = [
         email,
@@ -36,6 +44,8 @@ const createUser = async (userData) => {
         company_details ? JSON.stringify(company_details) : null,
         fee_type,
         fee_value,
+        included_distance,
+        extra_distance_fee,
         currency || 'SAR'
     ];
     const result = await db.query(query, values);
@@ -51,6 +61,18 @@ const updateOTP = async (email, otp, expiry) => {
 const verifyOTP = async (email, otp) => {
     const query = 'SELECT * FROM users WHERE email = $1 AND otp = $2 AND otp_expiry > NOW()';
     const result = await db.query(query, [email, otp]);
+    return result.rows[0];
+};
+
+const updateOTPByPhone = async (phone, otp, expiry) => {
+    const query = 'UPDATE users SET otp = $1, otp_expiry = $2 WHERE phone = $3 RETURNING *';
+    const result = await db.query(query, [otp, expiry, phone]);
+    return result.rows[0];
+};
+
+const verifyOTPByPhone = async (phone, otp) => {
+    const query = 'SELECT * FROM users WHERE phone = $1 AND otp = $2 AND otp_expiry > NOW()';
+    const result = await db.query(query, [phone, otp]);
     return result.rows[0];
 };
 
@@ -101,10 +123,13 @@ const deleteUserRefreshTokens = async (userId) => {
 
 module.exports = {
     findByEmail,
+    findByPhone,
     findById,
     createUser,
     updateOTP,
     verifyOTP,
+    updateOTPByPhone,
+    verifyOTPByPhone,
     updatePassword,
     createRefreshToken,
     findRefreshToken,

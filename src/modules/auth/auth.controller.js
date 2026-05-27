@@ -60,8 +60,9 @@ const login = async (req, res, next) => {
 
 const driverLogin = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
-        const result = await authService.driverLogin(email, password);
+        const { phone, password } = req.body;
+        console.log(req.body, 'body')
+        const result = await authService.driverLogin(phone, password);
         sendSuccess(res, 200, result.message || 'OTP sent successfully', result);
     } catch (err) {
         next(err);
@@ -76,6 +77,16 @@ const verifyLoginOtp = async (req, res, next) => {
             setRefreshTokenCookie(res, result.refreshToken);
         }
         sendSuccess(res, 200, 'Verification successful', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const verifyDriverLoginOtp = async (req, res, next) => {
+    try {
+        const { phone, otp } = req.body;
+        const result = await authService.verifyDriverLoginOtp(phone, otp);
+        sendSuccess(res, 200, 'Driver verification successful', result);
     } catch (err) {
         next(err);
     }
@@ -140,6 +151,7 @@ module.exports = {
     login,
     driverLogin,
     verifyLoginOtp,
+    verifyDriverLoginOtp,
     getMe,
     forgotPassword,
     resetPassword,

@@ -12,6 +12,10 @@ const client = twilio(accountSid, authToken);
 
 const sendSMS = async (to, body) => {
     try {
+        if (!client) {
+            console.warn('[Twilio MOCK] Account SID or Auth Token missing. SMS log:', { to, body });
+            return { sid: 'mock-sid-' + Date.now() };
+        }
         const message = await client.messages.create({
             body,
             from: twilioPhone,

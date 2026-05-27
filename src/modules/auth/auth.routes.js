@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('./auth.controller');
 const validate = require('../../middleware/validate.middleware');
-const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyLoginOtpSchema } = require('./auth.validation');
+const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyLoginOtpSchema, driverLoginSchema, verifyDriverLoginOtpSchema } = require('./auth.validation');
 const { protect } = require('../../middleware/auth.middleware');
 
 /**
@@ -63,6 +63,8 @@ const { protect } = require('../../middleware/auth.middleware');
  *             billingEmail: { type: string, format: email, example: 'billing@sarah.com' }
  *             feeType: { type: string, enum: [fixed, percentage], example: 'fixed' }
  *             feeValue: { type: number, example: 15 }
+ *             includedDistance: { type: number, example: 15 } 
+ *             extraDistanceFee: { type: number, example: 15 }  
  *             address:
  *               type: object
  *               properties:
@@ -132,7 +134,33 @@ router.post('/login', validate(loginSchema), authController.login);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/driver/login', validate(loginSchema), authController.driverLogin);
+router.post('/driver/login', validate(driverLoginSchema), authController.driverLogin);
+
+/**
+ * @swagger
+ * /api/auth/driver/verify-otp:
+ *   post:
+ *     summary: Verify 2-step verification login OTP for Driver
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *               - otp
+ *             properties:
+ *               phone: { type: string, example: '+1234567890' }
+ *               otp: { type: string, example: '123456' }
+ *     responses:
+ *       200:
+ *         description: Verification successful, returns access and refresh tokens
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+router.post('/driver/verify-otp', validate(verifyDriverLoginOtpSchema), authController.verifyDriverLoginOtp);
 
 /**
  * @swagger

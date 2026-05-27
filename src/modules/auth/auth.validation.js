@@ -47,7 +47,9 @@ const registerSchema = Joi.object({
             feeType: Joi.string().valid('fixed', 'percentage').required(),
             feeValue: Joi.number().required(),
             companyName: Joi.string().required(),
-            billingEmail: Joi.string().email().required()
+            billingEmail: Joi.string().email().required(),
+            includedDistance: Joi.number().min(0).optional(),
+            extraDistanceFee: Joi.number().min(0).optional()
         }).when('role', { is: 'client', then: Joi.required(), otherwise: Joi.optional() }).messages({
             'any.required': 'Company details are required for clients'
         }),
@@ -106,10 +108,35 @@ const verifyLoginOtpSchema = Joi.object({
     })
 });
 
+const driverLoginSchema = Joi.object({
+    body: Joi.object({
+        phone: Joi.string().required().messages({
+            'any.required': 'Phone number is required'
+        }),
+        password: Joi.string().required().messages({
+            'any.required': 'Password is required'
+        }),
+    })
+});
+
+const verifyDriverLoginOtpSchema = Joi.object({
+    body: Joi.object({
+        phone: Joi.string().required().messages({
+            'any.required': 'Phone number is required'
+        }),
+        otp: Joi.string().length(6).required().messages({
+            'string.length': 'OTP must be exactly 6 characters',
+            'any.required': 'OTP is required'
+        }),
+    })
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
     verifyLoginOtpSchema,
+    driverLoginSchema,
+    verifyDriverLoginOtpSchema,
 };

@@ -6,14 +6,56 @@ const csv = require('csv-parser');
 const { Readable } = require('stream');
 const { orderBodySchema } = require('./order.validation');
 
+const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+    if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 0;
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // in km
+};
+
+const getDistanceBasedDeliveryFee = (pickup, delivery, clientUser, baseFee = 0) => {
+    if (!pickup || !delivery || !clientUser) return baseFee;
+    const { lat: lat1, long: lon1 } = pickup;
+    const { lat: lat2, long: lon2 } = delivery;
+    if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return baseFee;
+
+    const distance = calculateHaversineDistance(lat1, lon1, lat2, lon2);
+    const includedDistance = clientUser.included_distance !== undefined && clientUser.included_distance !== null ? parseFloat(clientUser.included_distance) : 0;
+    const extraDistanceFee = clientUser.extra_distance_fee !== undefined && clientUser.extra_distance_fee !== null ? parseFloat(clientUser.extra_distance_fee) : 0;
+
+    let finalFee = parseFloat(baseFee) || 0;
+    if (distance > includedDistance && extraDistanceFee > 0) {
+        const extraDistance = distance - includedDistance;
+        finalFee += extraDistance * extraDistanceFee;
+    }
+    return Math.round(finalFee * 100) / 100; // round to 2 decimal places
+};
+
 const createOrder = async (client_id, orderData) => {
     const tracking_id = 'TRX' + Math.random().toString(36).substring(2, 10).toUpperCase();
     console.log(orderData, 'order data')
 
     // Fetch client to get their registered currency
-    const currency = orderData?.currency || 'SAR';
+    const clientUser = await userRepository.findById(client_id);
+    const currency = orderData?.currency || clientUser?.currency || 'SAR';
 
-    return await orderRepository.create({ ...orderData, client_id, tracking_id, currency });
+    let delivery_fee = orderData.delivery_fee || 0;
+    if (clientUser) {
+        delivery_fee = getDistanceBasedDeliveryFee(
+            orderData.pickup_address,
+            orderData.delivery_address,
+            clientUser,
+            delivery_fee
+        );
+    }
+
+    return await orderRepository.create({ ...orderData, client_id, tracking_id, currency, delivery_fee });
 };
 
 const bulkCreateOrders = async (client_id, fileBuffer) => {
@@ -87,6 +129,17 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
                     cod_amount: row.cod_amount ? parseFloat(row.cod_amount) : 0,
                     is_cod: parseFloat(row.cod_amount || 0) > 0
                 };
+
+                let delivery_fee = parseFloat(row.delivery_fee) || 0;
+                if (clientUser) {
+                    delivery_fee = getDistanceBasedDeliveryFee(
+                        rawOrderData.pickup_address,
+                        rawOrderData.delivery_address,
+                        clientUser,
+                        delivery_fee
+                    );
+                }
+                rawOrderData.delivery_fee = delivery_fee;
 
                 const { value: validatedData, error } = orderBodySchema.validate(rawOrderData);
                 if (error) {

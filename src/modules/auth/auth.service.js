@@ -52,7 +52,9 @@ const register = async (userData) => {
 const login = async (email, password) => {
     const user = await authRepository.findByEmail(email);
     if (!user) {
-        throw new Error('Invalid credentials');
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
     }
 
     const role = user.role.toLowerCase();
@@ -81,10 +83,13 @@ const login = async (email, password) => {
     };
 };
 
-const driverLogin = async (email, password) => {
-    const user = await authRepository.findByEmail(email);
+const driverLogin = async (phone, password) => {
+    const user = await authRepository.findByPhone(phone);
+    console.log(user, 'user')
     if (!user) {
-        throw new Error('Invalid credentials');
+        const error = new Error('Driver not found');
+        error.statusCode = 404;
+        throw error;
     }
 
     const role = user.role.toLowerCase();
@@ -99,20 +104,16 @@ const driverLogin = async (email, password) => {
         throw new Error('Invalid credentials');
     }
 
-    if (!user.phone) {
-        throw new Error('Driver does not have a registered phone number');
-    }
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = hashToken(otp);
     const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
 
-    await authRepository.updateOTP(user.email, hashedOtp, expiry);
-    await sendSMS(user.phone, `Your Last Mile login OTP is: ${otp}. Valid for 10 minutes.`);
+    await authRepository.updateOTPByPhone(phone, hashedOtp, expiry);
+    console.log('otp saved in db for driver');
+    await sendSMS(phone, `Your Last Mile login OTP is: ${otp}. Valid for 10 minutes.`);
 
     return {
         step2Required: true,
-        email: user.email,
         phone: user.phone,
         message: 'OTP sent to mobile number'
     };
@@ -138,6 +139,33 @@ const verifyLoginOtp = async (email, otp) => {
         user: {
             id: user.id,
             email: user.email,
+            role,
+            name: user.name
+        }
+    };
+};
+
+const verifyDriverLoginOtp = async (phone, otp) => {
+    const hashedOtp = hashToken(otp);
+    const user = await authRepository.verifyOTPByPhone(phone, hashedOtp);
+    if (!user) {
+        throw new Error('Invalid or expired OTP');
+    }
+
+    // Clear OTP and expiry
+    await authRepository.updateOTPByPhone(phone, null, null);
+
+    const role = user.role.toLowerCase();
+    const accessToken = generateAccessToken(user.id, role);
+    const refreshToken = await saveAndGenerateRefreshToken(user.id, role);
+
+    return {
+        accessToken,
+        refreshToken,
+        user: {
+            id: user.id,
+            email: user.email,
+            phone: user.phone,
             role,
             name: user.name
         }
@@ -291,6 +319,7 @@ module.exports = {
     login,
     driverLogin,
     verifyLoginOtp,
+    verifyDriverLoginOtp,
     getMe,
     forgotPassword,
     resetPassword,
