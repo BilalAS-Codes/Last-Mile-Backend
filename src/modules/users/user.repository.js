@@ -11,7 +11,17 @@ const getActiveDrivers = async () => {
         SELECT 
             u.id, u.email, u.name, u.phone, u.vehicle_number, u.vehicle_type, 
             u.rating, u.active, u.cash_in_hand, u.pending_settlement_balance, u.currency,
-            (SELECT COUNT(*) FROM orders o WHERE o.driver_id = u.id AND LOWER(o.status) = 'delivered') as total_deliveries
+            (SELECT COUNT(*) FROM orders o WHERE o.driver_id = u.id AND LOWER(o.status) = 'delivered') as total_deliveries,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM driver_locations dl 
+                WHERE dl.driver_id = u.id 
+                AND dl.created_at >= NOW() - INTERVAL '5 minutes'
+            ) THEN TRUE ELSE FALSE END as is_online,
+            (
+                SELECT COUNT(*) FROM driver_locations dl 
+                WHERE dl.driver_id = u.id 
+                AND dl.created_at >= CURRENT_DATE
+            ) as online_minutes
         FROM users u 
         WHERE LOWER(u.role) = 'driver' AND u.active = TRUE
     `;
