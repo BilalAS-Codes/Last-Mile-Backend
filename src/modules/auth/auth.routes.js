@@ -115,6 +115,7 @@ router.post('/register', validate(registerSchema), authController.register);
  *         description: Invalid credentials
  */
 router.post('/login', validate(loginSchema), authController.login);
+router.post('/demo-login', validate(loginSchema), authController.demoLogin);
 
 /**
  * @swagger

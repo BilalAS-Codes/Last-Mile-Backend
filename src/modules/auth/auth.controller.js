@@ -58,6 +58,17 @@ const login = async (req, res, next) => {
     }
 };
 
+const demoLogin = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+        const result = await authService.demoLogin(email, password);
+        sendSuccess(res, 200, result.message || 'OTP generated successfully', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+
 //no need otp just send access and refresh
 const demoDriverLogin = async (req, res, next) => {
     try {
@@ -180,6 +191,7 @@ const verifyDriverLoginOtpDemo = async (req, res, next) => {
 module.exports = {
     register,
     login,
+    demoLogin,
     demoDriverLogin,
     demoDriverLoginWithMock,
     driverLogin,

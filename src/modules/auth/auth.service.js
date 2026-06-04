@@ -121,6 +121,40 @@ const login = async (email, password) => {
     };
 };
 
+const demoLogin = async (email, password) => {
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const role = user.role.toLowerCase();
+    if (role === 'driver') {
+        const error = new Error('Drivers are not allowed to access this portal');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        throw new Error('Invalid credentials');
+    }
+
+    const otp = '000000';
+    const hashedOtp = hashToken(otp);
+    const expiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+    await authRepository.updateOTP(user.email, hashedOtp, expiry);
+
+    return {
+        step2Required: true,
+        email: user.email,
+        message: 'OTP generated successfully (Demo Mode)'
+    };
+};
+
+
 const driverLogin = async (phone, password) => {
     const user = await authRepository.findByPhone(phone);
     console.log(user, 'user')
@@ -498,6 +532,7 @@ const verifyDriverLoginOtpDemo = async (phone, otp) => {
 module.exports = {
     register,
     login,
+    demoLogin,
     demoDriverLogin,
     demoDriverLoginWithMock,
     driverLogin,
