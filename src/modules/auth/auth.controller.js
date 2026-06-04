@@ -58,6 +58,17 @@ const login = async (req, res, next) => {
     }
 };
 
+//no need otp just send access and refresh
+const demoDriverLogin = async (req, res, next) => {
+    try {
+        const { phone, password } = req.body;
+        const result = await authService.demoDriverLogin(phone, password);
+        sendSuccess(res, 200, result.message || 'Driver login successful', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
 const driverLogin = async (req, res, next) => {
     try {
         const { phone, password } = req.body;
@@ -146,12 +157,35 @@ const logout = async (req, res, next) => {
     }
 };
 
+const demoDriverLoginWithMock = async (req, res, next) => {
+    try {
+        const { phone, password } = req.body;
+        const result = await authService.demoDriverLoginWithMock(phone, password);
+        sendSuccess(res, 200, result.message || 'Driver login successful', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const verifyDriverLoginOtpDemo = async (req, res, next) => {
+    try {
+        const { phone, otp } = req.body;
+        const result = await authService.verifyDriverLoginOtpDemo(phone, otp);
+        sendSuccess(res, 200, 'Driver verification successful', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     register,
     login,
+    demoDriverLogin,
+    demoDriverLoginWithMock,
     driverLogin,
     verifyLoginOtp,
     verifyDriverLoginOtp,
+    verifyDriverLoginOtpDemo,
     getMe,
     forgotPassword,
     resetPassword,

@@ -1,10 +1,13 @@
 const orderService = require('./order.service');
 const { sendSuccess } = require('../../utils/response');
+const queueService = require('../queue/queue.service');
 
 const create = async (req, res, next) => {
     try {
         const order = await orderService.createOrder(req.user.id, req.body);
-        
+        // send the order to que 
+        let job = await queueService.publishJob('order.created', order);
+        console.log("order sent to que", job)
         sendSuccess(res, 201, 'Order created successfully', order);
     } catch (err) {
         next(err);

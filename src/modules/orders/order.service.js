@@ -199,6 +199,32 @@ const assignDriver = async (orderId, driverId, adminId) => {
     });
 };
 
+const assignDriverWithTimeline = async (orderId, driverId, adminId) => {
+    const order = await orderRepository.findById(orderId);
+    const timelineEntry = { status: 'assigned', timestamp: new Date().toISOString() };
+    
+    let currentTimeline = [];
+    if (order?.timeline) {
+        if (typeof order.timeline === 'string') {
+            try {
+                currentTimeline = JSON.parse(order.timeline);
+            } catch (e) {
+                currentTimeline = [];
+            }
+        } else if (Array.isArray(order.timeline)) {
+            currentTimeline = order.timeline;
+        }
+    }
+    
+    const updatedTimeline = [...currentTimeline, timelineEntry];
+    return await orderRepository.update(orderId, {
+        driver_id: driverId,
+        status: 'assigned',
+        assigned_by: adminId,
+        timeline: JSON.stringify(updatedTimeline)
+    });
+};
+
 const updateStatus = async (orderId, statusData) => {
     const { status, cod_collected } = statusData;
     if (!status) throw new Error('Status is required');
@@ -232,7 +258,6 @@ const updateStatus = async (orderId, statusData) => {
                 }, client);
             }
         }
-
         await client.query('COMMIT');
         return updatedOrder;
     } catch (err) {
@@ -264,6 +289,7 @@ module.exports = {
     getOrders,
     getDriverAssignments,
     assignDriver,
+    assignDriverWithTimeline,
     updateStatus,
     markAsDelivered,
     cancelOrder

@@ -1,10 +1,15 @@
 const app = require('./app');
+const autoAssignDriver = require('./modules/driver-assignment/auto-assign');
 
 const PORT = process.env.PORT || 5000;
 
 
 const server = app.listen(PORT, () => {
     console.log(`[SUCCESS] Server is listening on port ${PORT}`);
+    // Start the driver auto-assignment worker
+    autoAssignDriver().catch(err => {
+        console.error('Failed to start driver auto-assignment worker:', err);
+    });
 });
 
 // Keep-alive interval to prevent process from exiting if event loop is empty

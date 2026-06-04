@@ -38,8 +38,36 @@ const getDriverLocation = async (req, res, next) => {
     }
 };
 
+const getAssignmentStrategy = async (req, res, next) => {
+    try {
+        const config = require('../../config/assignment-config');
+        const settings = config.getSettings();
+        sendSuccess(res, 200, 'Assignment strategy fetched successfully', settings);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateAssignmentStrategy = async (req, res, next) => {
+    try {
+        const { strategy } = req.body;
+        if (!strategy) {
+            const error = new Error('Strategy is required');
+            error.statusCode = 400;
+            throw error;
+        }
+        const config = require('../../config/assignment-config');
+        const settings = config.updateSettings(strategy);
+        sendSuccess(res, 200, 'Assignment strategy updated successfully', settings);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     updateLocation,
     getLocations,
-    getDriverLocation
+    getDriverLocation,
+    getAssignmentStrategy,
+    updateAssignmentStrategy
 };

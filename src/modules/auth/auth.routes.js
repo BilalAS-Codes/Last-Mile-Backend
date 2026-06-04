@@ -135,6 +135,8 @@ router.post('/login', validate(loginSchema), authController.login);
  *         description: Invalid credentials
  */
 router.post('/driver/login', validate(driverLoginSchema), authController.driverLogin);
+router.post('/driver/demo-login', validate(driverLoginSchema), authController.demoDriverLoginWithMock);
+router.post('/driver/demo-verify-otp', validate(verifyDriverLoginOtpSchema), authController.verifyDriverLoginOtpDemo);
 
 /**
  * @swagger

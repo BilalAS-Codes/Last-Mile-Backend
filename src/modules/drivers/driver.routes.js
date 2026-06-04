@@ -71,4 +71,42 @@ router.get('/locations', protect, authorize('admin', 'client'), driverController
  */
 router.get('/:id/location', protect, authorize('admin', 'driver'), validate(getDriverLocationSchema), driverController.getDriverLocation);
 
+/**
+ * @swagger
+ * /api/drivers/assignment-strategy:
+ *   get:
+ *     summary: Get current auto-assignment strategy
+ *     tags: [Drivers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current assignment strategy
+ */
+router.get('/assignment-strategy', protect, authorize('admin'), driverController.getAssignmentStrategy);
+
+/**
+ * @swagger
+ * /api/drivers/assignment-strategy:
+ *   post:
+ *     summary: Update auto-assignment strategy
+ *     tags: [Drivers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - strategy
+ *             properties:
+ *               strategy: { type: string, enum: [fifo, nearest, zone], example: zone }
+ *     responses:
+ *       200:
+ *         description: Strategy updated successfully
+ */
+router.post('/assignment-strategy', protect, authorize('admin'), driverController.updateAssignmentStrategy);
+
 module.exports = router;
