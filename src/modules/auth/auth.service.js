@@ -184,7 +184,7 @@ const verifyLoginOtp = async (email, otp) => {
 };
 
 const verifyLoginOtpWithDemo = async (email, otp) => {
-    if (otp === '000000' || otp === 000000) {
+    if (otp === '000000' || otp === 0) {
         const user = await authRepository.findByEmail(email);
         if (!user) {
             throw new Error('User not found');
