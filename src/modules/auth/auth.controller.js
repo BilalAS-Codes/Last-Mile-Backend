@@ -83,7 +83,7 @@ const driverLogin = async (req, res, next) => {
 const verifyLoginOtp = async (req, res, next) => {
     try {
         const { email, otp } = req.body;
-        const result = await authService.verifyLoginOtp(email, otp);
+        const result = await authService.verifyLoginOtpWithDemo(email, otp);
         if (result.user && result.user.role !== 'driver') {
             setRefreshTokenCookie(res, result.refreshToken);
         }

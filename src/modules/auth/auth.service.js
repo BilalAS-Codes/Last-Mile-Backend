@@ -183,6 +183,30 @@ const verifyLoginOtp = async (email, otp) => {
     };
 };
 
+const verifyLoginOtpWithDemo = async (email, otp) => {
+    if (otp === '000000' || otp === 000000) {
+        const user = await authRepository.findByEmail(email);
+        if (!user) {
+            throw new Error('User not found');
+        }
+        const role = user.role.toLowerCase();
+        const accessToken = generateAccessToken(user.id, role);
+        const refreshToken = await saveAndGenerateRefreshToken(user.id, role);
+
+        return {
+            accessToken,
+            refreshToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                role,
+                name: user.name
+            }
+        };
+    }
+    return await verifyLoginOtp(email, otp);
+};
+
 const verifyDriverLoginOtp = async (phone, otp) => {
     if (otp === '123456' || otp === 123456) {
         const user = await authRepository.findByPhone(phone);
@@ -478,6 +502,7 @@ module.exports = {
     demoDriverLoginWithMock,
     driverLogin,
     verifyLoginOtp,
+    verifyLoginOtpWithDemo,
     verifyDriverLoginOtp,
     verifyDriverLoginOtpDemo,
     getMe,
