@@ -44,6 +44,25 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create Zones table
+CREATE TABLE IF NOT EXISTS zones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    coordinates JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Driver Zones mapping table
+CREATE TABLE IF NOT EXISTS driver_zones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    zone_id UUID NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(driver_id, zone_id)
+);
+
 -- Create Invoices table
 CREATE TABLE IF NOT EXISTS invoices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -66,6 +85,7 @@ CREATE TABLE IF NOT EXISTS orders (
     tracking_id VARCHAR(255) UNIQUE NOT NULL,
     client_id UUID REFERENCES users(id) ON DELETE CASCADE,
     driver_id UUID REFERENCES users(id) ON DELETE SET NULL NULL,
+    zone_id UUID REFERENCES zones(id) ON DELETE SET NULL NULL,
     status VARCHAR(50) DEFAULT 'PENDING',
     order_value DECIMAL(14, 2) DEFAULT 0.00,
     cod_amount DECIMAL(14, 2) DEFAULT 0.00,
@@ -121,6 +141,24 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure zone_id is added to orders table if it doesn't exist
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS zone_id UUID REFERENCES zones(id) ON DELETE SET NULL;
+
+-- Create Order Batches Table
+CREATE TABLE IF NOT EXISTS order_batches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    batch_code VARCHAR(255) UNIQUE NOT NULL,
+    driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'unassigned',
+    total_orders INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ensure batch_id is added to orders table if it doesn't exist
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id UUID REFERENCES order_batches(id) ON DELETE SET NULL;
+
 `;
 
 async function runMigration() {

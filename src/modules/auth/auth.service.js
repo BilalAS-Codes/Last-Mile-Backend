@@ -529,6 +529,93 @@ const verifyDriverLoginOtpDemo = async (phone, otp) => {
     };
 };
 
+const getDriverMe = async (userId) => {
+    const user = await authRepository.findById(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+    
+    let driverDetails = {};
+    if (user.company_details) {
+        let details = user.company_details;
+        if (typeof details === 'string') {
+            try {
+                details = JSON.parse(details);
+            } catch (e) {}
+        }
+        driverDetails = details.driver_details || {};
+    }
+    
+    return {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        role: user.role ? user.role.toLowerCase() : null,
+        name: user.name,
+        vehicle_number: user.vehicle_number,
+        vehicle_type: user.vehicle_type,
+        rating: user.rating,
+        active: user.active,
+        currency: user.currency,
+        included_distance: user.included_distance,
+        extra_distance_fee: user.extra_distance_fee,
+        driver_details: {
+            profile_image: driverDetails.profile_image || null,
+            vehicle_image: driverDetails.vehicle_image || null,
+            plate_number: driverDetails.plate_number || user.vehicle_number || null,
+            license_number: driverDetails.license_number || null,
+            license_image: driverDetails.license_image || null
+        }
+    };
+};
+
+const updateDriverMe = async (userId, driverData) => {
+    const user = await authRepository.findById(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+    
+    let currentDetails = {};
+    if (user.company_details) {
+        currentDetails = user.company_details;
+        if (typeof currentDetails === 'string') {
+            try {
+                currentDetails = JSON.parse(currentDetails);
+            } catch (e) {}
+        }
+    }
+    
+    const driverDetails = {
+        ...(currentDetails.driver_details || {}),
+        profile_image: driverData.profile_image !== undefined ? driverData.profile_image : (currentDetails.driver_details?.profile_image || null),
+        vehicle_image: driverData.vehicle_image !== undefined ? driverData.vehicle_image : (currentDetails.driver_details?.vehicle_image || null),
+        plate_number: driverData.plate_number !== undefined ? driverData.plate_number : (currentDetails.driver_details?.plate_number || null),
+        license_number: driverData.license_number !== undefined ? driverData.license_number : (currentDetails.driver_details?.license_number || null),
+        license_image: driverData.license_image !== undefined ? driverData.license_image : (currentDetails.driver_details?.license_image || null),
+    };
+    
+    const updatedCompanyDetails = {
+        ...currentDetails,
+        driver_details: driverDetails
+    };
+    
+    const db = require('../../config/db');
+    const query = `
+        UPDATE users 
+        SET company_details = $1,
+            vehicle_number = COALESCE($2, vehicle_number)
+        WHERE id = $3 
+        RETURNING *
+    `;
+    await db.query(query, [
+        JSON.stringify(updatedCompanyDetails),
+        driverData.plate_number || null,
+        userId
+    ]);
+    
+    return await getDriverMe(userId);
+};
+
 module.exports = {
     register,
     login,
@@ -544,5 +631,7 @@ module.exports = {
     forgotPassword,
     resetPassword,
     refresh,
-    logout
+    logout,
+    getDriverMe,
+    updateDriverMe
 };

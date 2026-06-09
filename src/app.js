@@ -15,6 +15,8 @@ const walletRoutes = require('./modules/wallet/wallet.routes');
 const billingRoutes = require('./modules/billing/billing.routes');
 const cashflowRoutes = require('./modules/cashflow/cashflow.routes');
 const driverRoutes = require('./modules/drivers/driver.routes');
+const zoneRoutes = require('./modules/zones/zone.routes');
+const notificationRoutes = require('./modules/notifications/notification.routes');
 
 const app = express();
 
@@ -28,7 +30,8 @@ app.use(cors({
     credentials: true
 }));
 app.use(morgan('dev'));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
@@ -41,6 +44,8 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/cashflow', cashflowRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/zones', zoneRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

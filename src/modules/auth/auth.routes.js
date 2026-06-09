@@ -252,6 +252,45 @@ router.get('/me', protect, authController.getMe);
 
 /**
  * @swagger
+ * /api/auth/driverme:
+ *   get:
+ *     summary: Get current driver profile including extra details
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver details retrieved
+ *       401:
+ *         description: Unauthorized
+ *   put:
+ *     summary: Update current driver profile extra details
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profile_image: { type: string }
+ *               vehicle_image: { type: string }
+ *               plate_number: { type: string }
+ *               license_number: { type: string }
+ *               license_image: { type: string }
+ *     responses:
+ *       200:
+ *         description: Driver details updated
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/driverme', protect, authController.getDriverMe);
+router.put('/driverme', protect, authController.updateDriverMe);
+
+/**
+ * @swagger
  * /api/auth/refresh:
  *   post:
  *     summary: Refresh access token using refresh token

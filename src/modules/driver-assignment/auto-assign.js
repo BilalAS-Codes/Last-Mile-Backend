@@ -34,7 +34,7 @@ async function processAutoAssignment() {
 
         // 3. FIFO: Get all pending orders ordered by created_at ASC
         const pendingOrdersQuery = `
-            SELECT id, tracking_id, pickup_address, delivery_address, created_at, status
+            SELECT id, tracking_id, pickup_address, delivery_address, created_at, status, zone_id
             FROM orders
             WHERE UPPER(status) = 'PENDING'
             ORDER BY created_at ASC
@@ -71,14 +71,23 @@ async function processAutoAssignment() {
             const orderLong = parseFloat(pickup.long);
             const orderGeohash = encodeGeohash(orderLat, orderLong, 9);
             const orderZone = pickup.city || pickup.zip || '';
-            console.log(`[DEBUG-AUTO-ASSIGN] Order pickup lat: ${orderLat}, long: ${orderLong}, geohash: ${orderGeohash}, zone: ${orderZone}`);
+            console.log(`[DEBUG-AUTO-ASSIGN] Order pickup lat: ${orderLat}, long: ${orderLong}, geohash: ${orderGeohash}, zone: ${orderZone}, db_zone_id: ${order.zone_id}`);
 
             // Get available drivers from users table matching the queue statuses
-            const drivers = await getAvailableDrivers(db, availableDriverIds);
-            console.log(`[DEBUG-AUTO-ASSIGN] DB returned ${drivers.length} drivers matching:`, drivers.map(d => ({ id: d.id, name: d.name, lat: d.latitude, long: d.longitude })));
+            // If strategy is 'zone', filter drivers by the order's zone_id.
+            const targetZoneId = strategy === 'zone' ? order.zone_id : null;
+            
+            // If strategy is zone but order has no zone, skip or check next
+            if (strategy === 'zone' && !targetZoneId) {
+                console.log(`Order ${order.id} has no assigned zone. Skipping assignment under zone strategy.`);
+                continue;
+            }
+
+            const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId);
+            console.log(`[DEBUG-AUTO-ASSIGN] DB returned ${drivers.length} drivers matching:`, drivers.map(d => ({ id: d.id, name: d.name })));
 
             if (drivers.length === 0) {
-                console.log(`No available drivers in database matching active queue status for order ${order.id}.`);
+                console.log(`No available drivers in database matching active queue status for order ${order.id} (Zone: ${targetZoneId}).`);
                 continue;
             }
 
@@ -126,25 +135,49 @@ async function processDriverAvailable(driverId) {
             return;
         }
 
-        // Get all pending orders
-        const pendingOrdersQuery = `
-            SELECT id, tracking_id, pickup_address, delivery_address, created_at, status
-            FROM orders
-            WHERE UPPER(status) = 'PENDING'
-            ORDER BY created_at ASC
-        `;
-        const pendingOrdersResult = await db.query(pendingOrdersQuery);
-        const pendingOrders = pendingOrdersResult.rows;
-
-        if (pendingOrders.length === 0) {
-            console.log('[EVENT-ASSIGN] No pending orders for available driver.');
-            return;
-        }
-
         // Resolve strategy
         const settings = require('../../config/assignment-config').getSettings();
         const strategy = settings?.strategy || 'fifo';
         console.log(`[EVENT-ASSIGN] Driver Available strategy: ${strategy}`);
+
+        // Get pending orders (filtered by zone if strategy is zone)
+        let pendingOrders = [];
+        if (strategy === 'zone') {
+            const driverZonesResult = await db.query(
+                'SELECT zone_id FROM driver_zones WHERE driver_id = $1',
+                [driverId]
+            );
+            const driverZoneIds = driverZonesResult.rows.map(r => r.zone_id);
+
+            if (driverZoneIds.length === 0) {
+                console.log(`[EVENT-ASSIGN] Driver ${driverId} is not assigned to any zones.`);
+                return;
+            }
+
+            const pendingOrdersQuery = `
+                SELECT id, tracking_id, pickup_address, delivery_address, created_at, status, zone_id
+                FROM orders
+                WHERE UPPER(status) = 'PENDING' AND zone_id = ANY($1::uuid[])
+                ORDER BY created_at ASC
+            `;
+            const pendingOrdersResult = await db.query(pendingOrdersQuery, [driverZoneIds]);
+            pendingOrders = pendingOrdersResult.rows;
+        } else {
+            const pendingOrdersQuery = `
+                SELECT id, tracking_id, pickup_address, delivery_address, created_at, status, zone_id
+                FROM orders
+                WHERE UPPER(status) = 'PENDING'
+                ORDER BY created_at ASC
+            `;
+            const pendingOrdersResult = await db.query(pendingOrdersQuery);
+            pendingOrders = pendingOrdersResult.rows;
+        }
+
+        if (pendingOrders.length === 0) {
+            console.log('[EVENT-ASSIGN] No pending orders for available driver in their assigned zones.');
+            return;
+        }
+
 
         // Rank pending orders for this driver
         const rankedOrders = rankAndSortOrders(pendingOrders, driver, strategy);
@@ -176,7 +209,7 @@ async function processOrderCreated(orderId) {
         
         // Fetch the order
         const orderQuery = `
-            SELECT id, tracking_id, pickup_address, delivery_address, created_at, status
+            SELECT id, tracking_id, pickup_address, delivery_address, created_at, status, zone_id
             FROM orders
             WHERE id = $1 AND UPPER(status) = 'PENDING'
         `;
@@ -210,6 +243,11 @@ async function processOrderCreated(orderId) {
         const orderZone = pickup.city || pickup.zip || '';
         const orderDetails = { orderLat, orderLong, orderGeohash, orderZone };
 
+        // Resolve strategy
+        const settings = require('../../config/assignment-config').getSettings();
+        const strategy = settings?.strategy || 'fifo';
+        console.log(`[EVENT-ASSIGN] Order Created strategy: ${strategy}`);
+
         // Get available drivers from memory map
         const availableDriverIds = Array.from(onlineDrivers.entries())
             .filter(([id, d]) => d.status === 'available')
@@ -221,16 +259,17 @@ async function processOrderCreated(orderId) {
         }
 
         // Fetch their details from DB
-        const drivers = await getAvailableDrivers(db, availableDriverIds);
-        if (drivers.length === 0) {
-            console.log(`[EVENT-ASSIGN] No available drivers in database matching active queue status for order ${order.id}.`);
+        const targetZoneId = strategy === 'zone' ? order.zone_id : null;
+        if (strategy === 'zone' && !targetZoneId) {
+            console.log(`[EVENT-ASSIGN] Order ${order.id} has no assigned zone. Skipping assignment under zone strategy.`);
             return;
         }
 
-        // Resolve strategy
-        const settings = require('../../config/assignment-config').getSettings();
-        const strategy = settings?.strategy || 'fifo';
-        console.log(`[EVENT-ASSIGN] Order Created strategy: ${strategy}`);
+        const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId);
+        if (drivers.length === 0) {
+            console.log(`[EVENT-ASSIGN] No available drivers in database matching active queue status for order ${order.id} (Zone: ${targetZoneId}).`);
+            return;
+        }
 
         // Rank drivers
         const rankedDrivers = rankAndSortDrivers(drivers, orderDetails, strategy);
@@ -298,12 +337,6 @@ async function autoAssignDriver() {
             }
         });
 
-        // Start a recurring interval check every 1 minute (60000 ms)
-        console.log('Starting 30 sec recurring check for unassigned orders...');
-        setInterval(async () => {
-            console.log('Running scheduled 30 sec check for auto-assignment...');
-            await processAutoAssignment();
-        }, 30000);
 
         console.log('Auto-assign worker successfully started and listening.');
     } catch (error) {

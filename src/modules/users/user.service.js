@@ -13,7 +13,21 @@ const getClients = async () => {
 };
 
 const updateStatus = async (id, isActive) => {
-    return await userRepository.updateDriverStatus(id, isActive);
+    const driver = await userRepository.findById(id);
+    const result = await userRepository.updateDriverStatus(id, isActive);
+    try {
+        if (driver) {
+            const { notifyDriverStatusChanged } = require('../notifications/driver/driver.notifications');
+            const { notifyAdminDriverStatusChanged } = require('../notifications/admin/admin.notifications');
+            await Promise.all([
+                notifyDriverStatusChanged(id, isActive),
+                notifyAdminDriverStatusChanged(driver.name, isActive)
+            ]);
+        }
+    } catch (e) {
+        console.error('Failed to trigger driver status changed notifications:', e);
+    }
+    return result;
 };
 
 const updateUser = async (id, userData) => {

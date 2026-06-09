@@ -188,6 +188,24 @@ const verifyDriverLoginOtpDemo = async (req, res, next) => {
     }
 };
 
+const getDriverMe = async (req, res, next) => {
+    try {
+        const result = await authService.getDriverMe(req.user.id);
+        sendSuccess(res, 200, 'Driver profile and details fetched successfully', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const updateDriverMe = async (req, res, next) => {
+    try {
+        const result = await authService.updateDriverMe(req.user.id, req.body);
+        sendSuccess(res, 200, 'Driver details updated successfully', result);
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -202,5 +220,7 @@ module.exports = {
     forgotPassword,
     resetPassword,
     refresh,
-    logout
+    logout,
+    getDriverMe,
+    updateDriverMe
 };

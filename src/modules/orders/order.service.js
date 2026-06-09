@@ -191,18 +191,70 @@ const getDriverAssignments = async (driverId) => {
     return await orderRepository.findAllAssignedToDrivers(driverId);
 };
 
+const triggerAssignmentNotifications = async (orderId, driverId) => {
+    try {
+        const order = await orderRepository.findById(orderId);
+        const driver = await userRepository.findById(driverId);
+        if (order && driver) {
+            const { notifyDriverAssigned } = require('../notifications/driver/driver.notifications');
+            const { notifyAdminOrderAssigned } = require('../notifications/admin/admin.notifications');
+            const { notifyClientOrderAssigned } = require('../notifications/client/client.notifications');
+
+            await Promise.all([
+                notifyDriverAssigned(driverId, order.tracking_id),
+                notifyAdminOrderAssigned(order.tracking_id, driver.name),
+                notifyClientOrderAssigned(order.client_id, order.tracking_id, driver.name)
+            ]);
+        }
+    } catch (e) {
+        console.error('Failed to send order assignment notifications:', e);
+    }
+};
+
+const triggerStatusNotifications = async (order, lowerStatus) => {
+    try {
+        if (!order || !order.driver_id) return;
+        const driver = await userRepository.findById(order.driver_id);
+        if (!driver) return;
+
+        if (lowerStatus === 'picked-up' || lowerStatus === 'picked_up' || lowerStatus === 'in-transit') {
+            const { notifyAdminOrderPickedUp } = require('../notifications/admin/admin.notifications');
+            const { notifyClientOrderPickedUp } = require('../notifications/client/client.notifications');
+            const { notifyDriverPickedUp } = require('../notifications/driver/driver.notifications');
+            await Promise.all([
+                notifyAdminOrderPickedUp(order.tracking_id, driver.name),
+                notifyClientOrderPickedUp(order.client_id, order.tracking_id, driver.name),
+                notifyDriverPickedUp(order.driver_id, order.tracking_id)
+            ]);
+        } else if (lowerStatus === 'delivered') {
+            const { notifyAdminCodCollected } = require('../notifications/admin/admin.notifications');
+            const { notifyClientCodCollected } = require('../notifications/client/client.notifications');
+            const { notifyDriverDelivered } = require('../notifications/driver/driver.notifications');
+            await Promise.all([
+                notifyAdminCodCollected(order.tracking_id, driver.name, order.cod_amount, order.currency || 'SAR'),
+                notifyClientCodCollected(order.client_id, order.tracking_id, order.cod_amount, order.currency || 'SAR'),
+                notifyDriverDelivered(order.driver_id, order.tracking_id, order.cod_amount || 0, order.currency || 'SAR')
+            ]);
+        }
+    } catch (e) {
+        console.error('Failed to send status update notifications:', e);
+    }
+};
+
 const assignDriver = async (orderId, driverId, adminId) => {
-    return await orderRepository.update(orderId, {
+    const result = await orderRepository.update(orderId, {
         driver_id: driverId,
         status: 'assigned',
         assigned_by: adminId
     });
+    await triggerAssignmentNotifications(orderId, driverId);
+    return result;
 };
 
 const assignDriverWithTimeline = async (orderId, driverId, adminId) => {
     const order = await orderRepository.findById(orderId);
     const timelineEntry = { status: 'assigned', timestamp: new Date().toISOString() };
-    
+
     let currentTimeline = [];
     if (order?.timeline) {
         if (typeof order.timeline === 'string') {
@@ -215,14 +267,16 @@ const assignDriverWithTimeline = async (orderId, driverId, adminId) => {
             currentTimeline = order.timeline;
         }
     }
-    
+
     const updatedTimeline = [...currentTimeline, timelineEntry];
-    return await orderRepository.update(orderId, {
+    const result = await orderRepository.update(orderId, {
         driver_id: driverId,
         status: 'assigned',
         assigned_by: adminId,
         timeline: JSON.stringify(updatedTimeline)
     });
+    await triggerAssignmentNotifications(orderId, driverId);
+    return result;
 };
 
 const updateStatus = async (orderId, statusData) => {
@@ -258,6 +312,7 @@ const updateStatus = async (orderId, statusData) => {
                 }, client);
             }
         }
+        await triggerStatusNotifications(updatedOrder, lowerStatus);
         await client.query('COMMIT');
         return updatedOrder;
     } catch (err) {

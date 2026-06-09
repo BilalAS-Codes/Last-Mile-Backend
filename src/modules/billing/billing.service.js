@@ -56,6 +56,22 @@ const notifyClient = async (clientId, invoice) => {
     }
 };
 
+const triggerInvoiceNotifications = async (clientId, amount, currency) => {
+    try {
+        const user = await userRepository.findById(clientId);
+        if (user) {
+            const { notifyAdminInvoiceGenerated } = require('../notifications/admin/admin.notifications');
+            const { notifyClientInvoiceGenerated } = require('../notifications/client/client.notifications');
+            await Promise.all([
+                notifyAdminInvoiceGenerated(user.name, amount, currency),
+                notifyClientInvoiceGenerated(clientId, amount, currency)
+            ]);
+        }
+    } catch (e) {
+        console.error('Failed to trigger invoice notifications:', e);
+    }
+};
+
 const generateInvoice = async (client_id, billing_period, due_date) => {
     const client = await db.pool.connect();
     try {
@@ -90,7 +106,10 @@ const generateInvoice = async (client_id, billing_period, due_date) => {
 
         await client.query('COMMIT');
 
-        // Send Notification (Background)
+        // Trigger notifications
+        await triggerInvoiceNotifications(client_id, invoice.total_amount, currency);
+
+        // Send Email Notification (Background)
         notifyClient(client_id, invoice).catch(err => console.error('Notification Error:', err));
 
         return invoice;
@@ -153,7 +172,10 @@ const createInvoiceWithFees = async (orderIds, billing_period, due_date, extra_c
 
         await client.query('COMMIT');
 
-        // Send Notification (Background)
+        // Trigger notifications
+        await triggerInvoiceNotifications(clientId, invoice.total_amount, currency);
+
+        // Send Email Notification (Background)
         notifyClient(clientId, invoice).catch(err => console.error('Notification Error:', err));
 
         return invoice;

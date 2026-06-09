@@ -25,7 +25,17 @@ const getDriverWallet = async (driverId) => {
 };
 
 const submitSettlement = async (driverId, amount) => {
-    return await walletRepository.createSettlementWithLock(driverId, amount);
+    const driver = await userRepository.findById(driverId);
+    const result = await walletRepository.createSettlementWithLock(driverId, amount);
+    try {
+        if (driver) {
+            const { notifyAdminSettlementSubmitted } = require('../notifications/admin/admin.notifications');
+            await notifyAdminSettlementSubmitted(driver.name, amount, driver.currency || 'SAR');
+        }
+    } catch (e) {
+        console.error('Failed to trigger settlement submitted notification:', e);
+    }
+    return result;
 };
 
 const listSettlements = async () => {
@@ -37,13 +47,23 @@ const getDriverSettlements = async (driverId) => {
 };
 
 const updateSettlement = async (id, status, adminId) => {
+    let result;
     if (status.toLowerCase() === 'approved') {
-        return await walletRepository.approveSettlementWithTransaction(id, adminId);
+        result = await walletRepository.approveSettlementWithTransaction(id, adminId);
+        try {
+            if (result) {
+                const { notifyDriverSettlementConfirmed } = require('../notifications/driver/driver.notifications');
+                await notifyDriverSettlementConfirmed(result.driver_id, result.amount, result.currency || 'SAR');
+            }
+        } catch (e) {
+            console.error('Failed to trigger settlement approval notification:', e);
+        }
     } else if (status.toLowerCase() === 'rejected') {
-        return await walletRepository.rejectSettlementWithTransaction(id, adminId);
+        result = await walletRepository.rejectSettlementWithTransaction(id, adminId);
     } else {
         throw new Error('Invalid settlement status. Use "approved" or "rejected".');
     }
+    return result;
 };
 
 const directSettlement = async (driverId, amount, adminId) => {

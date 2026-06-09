@@ -1,10 +1,10 @@
 const db = require('../../config/db');
 const { v4: uuidv4 } = require('uuid');
 
-const create = async (orderData) => {
+const create = async (orderData, client = db) => {
     const {
         client_id, tracking_id, pickup_address, delivery_address,
-        customer_name, customer_phone, cod_amount, order_value, delivery_fee, assigned_by, currency
+        customer_name, customer_phone, cod_amount, order_value, delivery_fee, assigned_by, currency, zone_id
     } = orderData;
 
     const timeline = [{ status: 'pending', timestamp: new Date().toISOString() }];
@@ -12,17 +12,17 @@ const create = async (orderData) => {
     const query = `
         INSERT INTO orders (
             tracking_id, client_id, pickup_address, delivery_address, 
-            customer_name, customer_phone, cod_amount, order_value, delivery_fee, status, timeline, assigned_by, currency
+            customer_name, customer_phone, cod_amount, order_value, delivery_fee, status, timeline, assigned_by, currency, zone_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12, $13)
         RETURNING *
     `;
     const values = [
         tracking_id, client_id, JSON.stringify(pickup_address), JSON.stringify(delivery_address),
         customer_name, customer_phone, cod_amount || 0, order_value || 0, delivery_fee || 0,
-        JSON.stringify(timeline), assigned_by, currency || 'SAR'
+        JSON.stringify(timeline), assigned_by, currency || 'SAR', zone_id || null
     ];
-    const result = await db.query(query, values);
+    const result = await client.query(query, values);
     return result.rows[0];
 };
 
