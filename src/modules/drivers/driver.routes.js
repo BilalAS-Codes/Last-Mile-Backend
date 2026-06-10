@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const driverController = require('./driver.controller');
 const validate = require('../../middleware/validate.middleware');
-const { updateLocationSchema, getDriverLocationSchema } = require('./driver.validation');
+const { updateLocationSchema, getDriverLocationSchema, updateAssignmentStrategySchema } = require('./driver.validation');
 const { protect, authorize } = require('../../middleware/auth.middleware');
 
 /**
@@ -107,6 +107,6 @@ router.get('/assignment-strategy', protect, authorize('admin'), driverController
  *       200:
  *         description: Strategy updated successfully
  */
-router.post('/assignment-strategy', protect, authorize('admin'), driverController.updateAssignmentStrategy);
+router.post('/assignment-strategy', protect, authorize('admin'), validate(updateAssignmentStrategySchema), driverController.updateAssignmentStrategy);
 
 module.exports = router;

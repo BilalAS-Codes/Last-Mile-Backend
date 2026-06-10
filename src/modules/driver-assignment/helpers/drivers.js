@@ -4,7 +4,7 @@ const { getDistance } = require('./distance');
 /**
  * Fetch available drivers that are online and not currently assigned to active orders.
  */
-async function getAvailableDrivers(db, availableDriverIds, zoneId = null) {
+async function getAvailableDrivers(db, availableDriverIds, zoneId = null, orderClubbing = false) {
     let availableDriversQuery = `
         SELECT u.id, u.name, u.company_details, dl.latitude, dl.longitude
         FROM users u
@@ -12,19 +12,23 @@ async function getAvailableDrivers(db, availableDriverIds, zoneId = null) {
         WHERE LOWER(u.role) = 'driver'
           AND u.active = true
           AND u.id = ANY($1::uuid[])
+    `;
+    if (!orderClubbing) {
+        availableDriversQuery += `
           AND u.id NOT IN (
               SELECT DISTINCT driver_id 
               FROM orders 
               WHERE driver_id IS NOT NULL 
                 AND UPPER(status) IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'PICKED-UP', 'IN-TRANSIT')
           )
-    `;
+        `;
+    }
     const params = [availableDriverIds];
     if (zoneId) {
         availableDriversQuery += ` AND u.id IN (SELECT driver_id FROM driver_zones WHERE zone_id = $2) `;
         params.push(zoneId);
     }
-    console.log('[DEBUG-AUTO-ASSIGN] Querying DB for drivers with IDs:', availableDriverIds, 'Zone:', zoneId);
+    console.log('[DEBUG-AUTO-ASSIGN] Querying DB for drivers with IDs:', availableDriverIds, 'Zone:', zoneId, 'orderClubbing:', orderClubbing);
     const driversResult = await db.query(availableDriversQuery, params);
     return driversResult.rows;
 }

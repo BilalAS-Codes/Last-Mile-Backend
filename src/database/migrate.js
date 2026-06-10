@@ -159,6 +159,17 @@ CREATE TABLE IF NOT EXISTS order_batches (
 -- Ensure batch_id is added to orders table if it doesn't exist
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id UUID REFERENCES order_batches(id) ON DELETE SET NULL;
 
+-- Create Assignment Settings Table
+CREATE TABLE IF NOT EXISTS assignment_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    strategy VARCHAR(50) DEFAULT 'fifo',
+    order_clubbing BOOLEAN DEFAULT FALSE,
+    clubbing_distance DECIMAL(10, 2) DEFAULT 1.00,
+    clubbing_time_difference DECIMAL(10, 2) DEFAULT 1.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 `;
 
 async function runMigration() {
@@ -166,6 +177,17 @@ async function runMigration() {
         console.log('Starting custom database migration...');
         await pool.query(schemaSql);
         console.log('Database tables created successfully (or already existed).');
+
+        // Seed default assignment settings if table is empty
+        const settingsRes = await pool.query('SELECT id FROM assignment_settings LIMIT 1');
+        if (settingsRes.rowCount === 0) {
+            console.log('Seeding default assignment settings...');
+            await pool.query(
+                `INSERT INTO assignment_settings (strategy, order_clubbing, clubbing_distance, clubbing_time_difference)
+                 VALUES ('fifo', false, 1.00, 1.00)`
+            );
+            console.log('Default assignment settings seeded successfully.');
+        }
 
         // Check if admin user already exists
         const adminEmail = 'bilalahmsiddique@gmail.com';

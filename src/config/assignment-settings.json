@@ -1,3 +1,6 @@
 {
-  "strategy": "fifo"
+  "strategy": "zone",
+  "order_clubbing": true,
+  "clubbing_distance": 2,
+  "clubbing_time_difference": 5
 }

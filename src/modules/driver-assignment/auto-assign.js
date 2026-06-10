@@ -7,32 +7,106 @@ const queueService = require('../queue/queue.service');
 const db = require('../../config/db');
 const { encodeGeohash } = require('./helpers/geohash');
 const { getAvailableDrivers, rankAndSortDrivers, rankAndSortOrders } = require('./helpers/drivers');
+const { getDistance } = require('./helpers/distance');
 const orderService = require('../orders/order.service');
 
 // Map to track driver status from queue
 const onlineDrivers = new Map(); // driverId -> { status: 'available' | 'assigned' | 'offline', lastSeen: Date.now() }
 
+// Helper function to check if a driver is eligible for a new order under the order clubbing rules
+async function checkOrderClubbingEligibility(db, driverId, newOrder, settings) {
+    const { order_clubbing, clubbing_distance, clubbing_time_difference } = settings;
+    
+    // Get active orders for this driver
+    const activeOrdersQuery = `
+        SELECT id, pickup_address, created_at
+        FROM orders
+        WHERE driver_id = $1
+          AND UPPER(status) IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'PICKED-UP', 'IN-TRANSIT')
+    `;
+    const res = await db.query(activeOrdersQuery, [driverId]);
+    const activeOrders = res.rows;
+
+    if (activeOrders.length === 0) {
+        // If driver has no active orders, they are fully available!
+        return true;
+    }
+
+    if (!order_clubbing) {
+        // If order clubbing is disabled and they have active orders, they are not eligible.
+        return false;
+    }
+
+    // Parse new order's pickup coordinates
+    let newPickup = newOrder.pickup_address;
+    if (typeof newPickup === 'string') {
+        try { newPickup = JSON.parse(newPickup); } catch(e) { return false; }
+    }
+    if (!newPickup || !newPickup.lat || !newPickup.long) return false;
+    const newLat = parseFloat(newPickup.lat);
+    const newLong = parseFloat(newPickup.long);
+    const newTime = new Date(newOrder.created_at).getTime();
+
+    // Check against ALL active orders of this driver
+    for (const activeOrder of activeOrders) {
+        let activePickup = activeOrder.pickup_address;
+        if (typeof activePickup === 'string') {
+            try { activePickup = JSON.parse(activePickup); } catch(e) { return false; }
+        }
+        if (!activePickup || !activePickup.lat || !activePickup.long) return false;
+        
+        // Calculate distance
+        const dist = getDistance(
+            newLat,
+            newLong,
+            parseFloat(activePickup.lat),
+            parseFloat(activePickup.long)
+        );
+
+        // Calculate time difference in minutes
+        const activeTime = new Date(activeOrder.created_at).getTime();
+        const timeDiffMin = Math.abs(newTime - activeTime) / (1000 * 60);
+
+        // Check distance condition if specified
+        if (clubbing_distance !== undefined && clubbing_distance !== null) {
+            if (dist > parseFloat(clubbing_distance)) {
+                return false;
+            }
+        }
+
+        // Check time condition if specified
+        if (clubbing_time_difference !== undefined && clubbing_time_difference !== null) {
+            if (timeDiffMin > parseFloat(clubbing_time_difference)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 async function processAutoAssignment() {
     try {
-        // 1. Get available driver IDs from the in-memory map populated by the drivers queue
+        // Resolve assignment settings once
+        const settings = await require('../../config/assignment-config').getSettings();
+        const strategy = settings?.strategy || 'fifo';
+        const orderClubbing = settings?.order_clubbing || false;
+        console.log(`[AUTO-ASSIGN STRATEGY] Selected strategy: ${strategy}, order clubbing: ${orderClubbing}`);
+
+        // Get available driver IDs from the in-memory map
         const availableDriverIds = Array.from(onlineDrivers.entries())
-            .filter(([id, d]) => d.status === 'available')
+            .filter(([id, d]) => d.status === 'available' || (orderClubbing && d.status === 'assigned'))
             .map(([id]) => id);
 
         console.log('[DEBUG-AUTO-ASSIGN] All online drivers map:', Array.from(onlineDrivers.entries()));
-        console.log('[DEBUG-AUTO-ASSIGN] Filtered available driver IDs:', availableDriverIds);
+        console.log('[DEBUG-AUTO-ASSIGN] Filtered candidate driver IDs:', availableDriverIds);
 
         if (availableDriverIds.length === 0) {
             console.log('Auto-assign skipped: No drivers are currently online/available.');
             return;
         }
 
-        // 2. Resolve assignment strategy once
-        const settings = require('../../config/assignment-config').getSettings();
-        const strategy = settings?.strategy || 'fifo';
-        console.log(`Auto-assigning using strategy: ${strategy}`);
-
-        // 3. FIFO: Get all pending orders ordered by created_at ASC
+        // FIFO: Get all pending orders ordered by created_at ASC
         const pendingOrdersQuery = `
             SELECT id, tracking_id, pickup_address, delivery_address, created_at, status, zone_id
             FROM orders
@@ -74,7 +148,6 @@ async function processAutoAssignment() {
             console.log(`[DEBUG-AUTO-ASSIGN] Order pickup lat: ${orderLat}, long: ${orderLong}, geohash: ${orderGeohash}, zone: ${orderZone}, db_zone_id: ${order.zone_id}`);
 
             // Get available drivers from users table matching the queue statuses
-            // If strategy is 'zone', filter drivers by the order's zone_id.
             const targetZoneId = strategy === 'zone' ? order.zone_id : null;
             
             // If strategy is zone but order has no zone, skip or check next
@@ -83,7 +156,7 @@ async function processAutoAssignment() {
                 continue;
             }
 
-            const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId);
+            const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId, orderClubbing);
             console.log(`[DEBUG-AUTO-ASSIGN] DB returned ${drivers.length} drivers matching:`, drivers.map(d => ({ id: d.id, name: d.name })));
 
             if (drivers.length === 0) {
@@ -91,9 +164,23 @@ async function processAutoAssignment() {
                 continue;
             }
 
+            // Filter drivers by clubbing eligibility
+            const eligibleDrivers = [];
+            for (const d of drivers) {
+                const isEligible = await checkOrderClubbingEligibility(db, d.id, order, settings);
+                if (isEligible) {
+                    eligibleDrivers.push(d);
+                }
+            }
+
+            if (eligibleDrivers.length === 0) {
+                console.log(`No eligible drivers (order clubbing check failed) for order ${order.id}.`);
+                continue;
+            }
+
             // Rank drivers based on geohash prefix matching (nearest) and zone-wise matching
             const orderDetails = { orderLat, orderLong, orderGeohash, orderZone };
-            const rankedDrivers = rankAndSortDrivers(drivers, orderDetails, strategy);
+            const rankedDrivers = rankAndSortDrivers(eligibleDrivers, orderDetails, strategy);
 
             const bestDriverMatch = rankedDrivers[0];
             if (bestDriverMatch) {
@@ -110,10 +197,12 @@ async function processAutoAssignment() {
                     orderId: order.id
                 });
 
-                // Remove assigned driver from the list of available IDs so they aren't assigned subsequent orders in this loop
-                const index = availableDriverIds.indexOf(assignedDriver.id);
-                if (index > -1) {
-                    availableDriverIds.splice(index, 1);
+                // Remove assigned driver from the list of available IDs so they aren't assigned subsequent orders in this loop if clubbing is disabled
+                if (!orderClubbing) {
+                    const index = availableDriverIds.indexOf(assignedDriver.id);
+                    if (index > -1) {
+                        availableDriverIds.splice(index, 1);
+                    }
                 }
                 onlineDrivers.set(assignedDriver.id, { status: 'assigned', lastSeen: Date.now() });
             }
@@ -126,8 +215,11 @@ async function processAutoAssignment() {
 async function processDriverAvailable(driverId) {
     try {
         console.log(`[EVENT-ASSIGN] Processing Driver Available for driverId: ${driverId}`);
-        // Fetch driver from database using the same check to ensure they are available
-        const drivers = await getAvailableDrivers(db, [driverId]);
+        const settings = await require('../../config/assignment-config').getSettings();
+        const orderClubbing = settings?.order_clubbing || false;
+
+        // Fetch driver from database
+        const drivers = await getAvailableDrivers(db, [driverId], null, orderClubbing);
         const driver = drivers[0];
 
         if (!driver) {
@@ -136,7 +228,6 @@ async function processDriverAvailable(driverId) {
         }
 
         // Resolve strategy
-        const settings = require('../../config/assignment-config').getSettings();
         const strategy = settings?.strategy || 'fifo';
         console.log(`[EVENT-ASSIGN] Driver Available strategy: ${strategy}`);
 
@@ -178,10 +269,19 @@ async function processDriverAvailable(driverId) {
             return;
         }
 
-
         // Rank pending orders for this driver
         const rankedOrders = rankAndSortOrders(pendingOrders, driver, strategy);
-        const bestOrderMatch = rankedOrders[0];
+        
+        // Filter by clubbing eligibility
+        const eligibleOrders = [];
+        for (const entry of rankedOrders) {
+            const isEligible = await checkOrderClubbingEligibility(db, driverId, entry.order, settings);
+            if (isEligible) {
+                eligibleOrders.push(entry);
+            }
+        }
+
+        const bestOrderMatch = eligibleOrders[0];
 
         if (bestOrderMatch) {
             const order = bestOrderMatch.order;
@@ -244,13 +344,14 @@ async function processOrderCreated(orderId) {
         const orderDetails = { orderLat, orderLong, orderGeohash, orderZone };
 
         // Resolve strategy
-        const settings = require('../../config/assignment-config').getSettings();
+        const settings = await require('../../config/assignment-config').getSettings();
         const strategy = settings?.strategy || 'fifo';
-        console.log(`[EVENT-ASSIGN] Order Created strategy: ${strategy}`);
+        const orderClubbing = settings?.order_clubbing || false;
+        console.log(`[EVENT-ASSIGN] Order Created strategy: ${strategy}, order clubbing: ${orderClubbing}`);
 
         // Get available drivers from memory map
         const availableDriverIds = Array.from(onlineDrivers.entries())
-            .filter(([id, d]) => d.status === 'available')
+            .filter(([id, d]) => d.status === 'available' || (orderClubbing && d.status === 'assigned'))
             .map(([id]) => id);
 
         if (availableDriverIds.length === 0) {
@@ -265,14 +366,28 @@ async function processOrderCreated(orderId) {
             return;
         }
 
-        const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId);
+        const drivers = await getAvailableDrivers(db, availableDriverIds, targetZoneId, orderClubbing);
         if (drivers.length === 0) {
             console.log(`[EVENT-ASSIGN] No available drivers in database matching active queue status for order ${order.id} (Zone: ${targetZoneId}).`);
             return;
         }
 
+        // Filter drivers by clubbing eligibility
+        const eligibleDrivers = [];
+        for (const d of drivers) {
+            const isEligible = await checkOrderClubbingEligibility(db, d.id, order, settings);
+            if (isEligible) {
+                eligibleDrivers.push(d);
+            }
+        }
+
+        if (eligibleDrivers.length === 0) {
+            console.log(`[EVENT-ASSIGN] No eligible drivers (order clubbing check failed) for order ${order.id}.`);
+            return;
+        }
+
         // Rank drivers
-        const rankedDrivers = rankAndSortDrivers(drivers, orderDetails, strategy);
+        const rankedDrivers = rankAndSortDrivers(eligibleDrivers, orderDetails, strategy);
         const bestDriverMatch = rankedDrivers[0];
 
         if (bestDriverMatch) {
@@ -320,9 +435,9 @@ async function autoAssignDriver() {
                 }
             }
 
-            // Trigger assignment checking automatically when a driver goes online/available
-            if (statusChanged && onlineDrivers.get(jobId).status === 'available') {
-                console.log(`Driver ${jobId} became available. Triggering auto-assignment check...`);
+            // Trigger assignment checking automatically when a driver is available/online
+            if (onlineDrivers.get(jobId) && onlineDrivers.get(jobId).status === 'available') {
+                console.log(`Driver ${jobId} is available. Triggering auto-assignment check...`);
                 await processDriverAvailable(jobId);
             }
         });

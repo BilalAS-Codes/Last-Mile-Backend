@@ -1,5 +1,6 @@
 const zoneRepository = require('./zone.repository');
 const turf = require('@turf/turf');
+const db = require('../../config/db');
 
 // Helper to ensure polygon coordinates are closed (first and last elements are the same)
 const closePolygon = (coords) => {
@@ -87,6 +88,7 @@ const getAllZones = async () => {
         if (typeof z.coordinates === 'string') {
             z.coordinates = JSON.parse(z.coordinates);
         }
+        console.log(`[ZONE] Zone "${z.name}" coordinates:`, JSON.stringify(z.coordinates));
         return z;
     });
 };
@@ -120,6 +122,80 @@ const assignDriverToZones = async (driverId, zoneIds) => {
             throw new Error(`Driver is already assigned to zone "${currentZone.name}". Remove them from "${currentZone.name}" first.`);
         }
         return existingZones;
+    }
+
+    const assignment = await zoneRepository.assignDriver(driverId, targetZoneId);
+    try {
+        if (assignment) {
+            const userRepository = require('../users/user.repository');
+            const driver = await userRepository.findById(driverId);
+            const zone = await zoneRepository.findById(targetZoneId);
+            if (driver && zone) {
+                const { notifyDriverZoneAssigned } = require('../notifications/driver/driver.notifications');
+                const { notifyAdminZoneAssigned } = require('../notifications/admin/admin.notifications');
+                await Promise.all([
+                    notifyDriverZoneAssigned(driverId, targetZoneId, zone.name),
+                    notifyAdminZoneAssigned(driver.name, zone.name)
+                ]);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to trigger zone assignment notifications:', e);
+    }
+    return assignment ? [assignment] : [];
+};
+
+const assignDriverToZonesWithAvailability = async (driverId, zoneIds) => {
+    if (!driverId) throw new Error('Driver ID is required');
+    if (!Array.isArray(zoneIds)) throw new Error('Zone IDs must be an array');
+
+    if (zoneIds.length > 1) {
+        throw new Error('A driver can only be assigned to one zone at a time');
+    }
+
+    const targetZoneId = zoneIds[0];
+
+    // Get current zones for the driver
+    const existingZones = await zoneRepository.findZonesByDriverId(driverId);
+    console.log(`[ZONE-ASSIGN-CHECK] Reassign request for driverId: ${driverId}, targetZoneId: ${targetZoneId}`);
+    console.log(`[ZONE-ASSIGN-CHECK] Existing zones for driver:`, existingZones.map(z => ({ id: z.id, name: z.name })));
+
+    // Query active orders first
+    const activeOrdersQuery = `
+        SELECT id, tracking_id, status 
+        FROM orders 
+        WHERE driver_id = $1 
+          AND UPPER(status) IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'PICKED-UP', 'IN-TRANSIT')
+    `;
+    const activeRes = await db.query(activeOrdersQuery, [driverId]);
+    console.log(`[ZONE-ASSIGN-CHECK] Active orders query returned rows:`, activeRes.rows);
+
+    if (zoneIds.length === 0) {
+        if (activeRes.rowCount > 0) {
+            throw new Error(`Driver is busy with orders. Once driver is available, you can change the zone.`);
+        }
+        // Clear all assignments (removal)
+        await zoneRepository.removeAllDriverAssignments(driverId);
+        return [];
+    }
+
+    if (existingZones.length > 0) {
+        const currentZone = existingZones[0];
+        if (currentZone.id !== targetZoneId) {
+            if (activeRes.rowCount > 0) {
+                throw new Error(`Driver is busy with orders. Once driver is available, you can change the zone.`);
+            }
+            // If they are available (no active orders), remove them from the old zone first
+            await zoneRepository.removeAllDriverAssignments(driverId);
+        } else {
+            console.log(`[ZONE-ASSIGN-CHECK] Driver is already assigned to the target zone. No change needed.`);
+            return existingZones;
+        }
+    } else {
+        // No existing zones, but trying to assign a zone
+        if (activeRes.rowCount > 0) {
+            throw new Error(`Driver is busy with orders. Once driver is available, you can change the zone.`);
+        }
     }
 
     const assignment = await zoneRepository.assignDriver(driverId, targetZoneId);
@@ -190,6 +266,7 @@ module.exports = {
     getAllZones,
     deleteZone,
     assignDriverToZones,
+    assignDriverToZonesWithAvailability,
     getZonesForDriver,
     findZoneForCoordinates,
     isPointInZone,

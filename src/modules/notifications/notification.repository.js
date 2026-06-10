@@ -52,27 +52,28 @@ const syncDatabaseNotifications = async (userId) => {
 
         // Sync zone assignment
         const userResult = await db.query(
-            "SELECT u.id, u.zone_id, z.name as zone_name FROM users u LEFT JOIN zones z ON u.zone_id = z.id WHERE u.id = $1",
+            "SELECT dz.zone_id, z.name as zone_name FROM driver_zones dz LEFT JOIN zones z ON dz.zone_id = z.id WHERE dz.driver_id = $1",
             [userId]
         );
         if (userResult.rows.length > 0) {
-            const user = userResult.rows[0];
-            if (user.zone_id && user.zone_name) {
-                const hasZone = inMemoryNotifications.some(
-                    n => n.user_id === userId && n.type === 'ZONE_ASSIGNED' && n.metadata?.zoneId === user.zone_id
-                );
-                if (!hasZone) {
-                    inMemoryNotifications.push({
-                        id: uuidv4(),
-                        user_id: userId,
-                        title: 'Zone Assigned',
-                        message: `You have been assigned to Zone: ${user.zone_name} (ID: ${user.zone_id}).`,
-                        type: 'ZONE_ASSIGNED',
-                        read: false,
-                        metadata: { zoneId: user.zone_id, zoneName: user.zone_name },
-                        created_at: new Date(),
-                        updated_at: new Date()
-                    });
+            for (const userZone of userResult.rows) {
+                if (userZone.zone_id && userZone.zone_name) {
+                    const hasZone = inMemoryNotifications.some(
+                        n => n.user_id === userId && n.type === 'ZONE_ASSIGNED' && n.metadata?.zoneId === userZone.zone_id
+                    );
+                    if (!hasZone) {
+                        inMemoryNotifications.push({
+                            id: uuidv4(),
+                            user_id: userId,
+                            title: 'Zone Assigned',
+                            message: `You have been assigned to Zone: ${userZone.zone_name} (ID: ${userZone.zone_id}).`,
+                            type: 'ZONE_ASSIGNED',
+                            read: false,
+                            metadata: { zoneId: userZone.zone_id, zoneName: userZone.zone_name },
+                            created_at: new Date(),
+                            updated_at: new Date()
+                        });
+                    }
                 }
             }
         }

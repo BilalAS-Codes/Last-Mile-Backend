@@ -41,7 +41,7 @@ const getDriverLocation = async (req, res, next) => {
 const getAssignmentStrategy = async (req, res, next) => {
     try {
         const config = require('../../config/assignment-config');
-        const settings = config.getSettings();
+        const settings = await config.getSettings();
         sendSuccess(res, 200, 'Assignment strategy fetched successfully', settings);
     } catch (error) {
         next(error);
@@ -50,14 +50,9 @@ const getAssignmentStrategy = async (req, res, next) => {
 
 const updateAssignmentStrategy = async (req, res, next) => {
     try {
-        const { strategy } = req.body;
-        if (!strategy) {
-            const error = new Error('Strategy is required');
-            error.statusCode = 400;
-            throw error;
-        }
+        const { strategy, order_clubbing, clubbing_distance, clubbing_time_difference } = req.body;
         const config = require('../../config/assignment-config');
-        const settings = config.updateSettings(strategy);
+        const settings = await config.updateSettings(strategy, order_clubbing, clubbing_distance, clubbing_time_difference);
         sendSuccess(res, 200, 'Assignment strategy updated successfully', settings);
     } catch (error) {
         next(error);

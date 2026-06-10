@@ -5,6 +5,7 @@ const db = require('../../config/db');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 const { orderBodySchema } = require('./order.validation');
+const zoneService = require('../zones/zone.service');
 
 const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
     if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 0;
@@ -55,7 +56,22 @@ const createOrder = async (client_id, orderData) => {
         );
     }
 
-    return await orderRepository.create({ ...orderData, client_id, tracking_id, currency, delivery_fee });
+    // Automatically resolve zone_id based on pickup address coordinates
+    let zone_id = orderData.zone_id || null;
+    let pickup = orderData.pickup_address;
+    if (typeof pickup === 'string') {
+        try { pickup = JSON.parse(pickup); } catch(e) {}
+    }
+    if (!zone_id && pickup && pickup.lat && pickup.long) {
+        const detectedZone = await zoneService.findZoneForCoordinates(parseFloat(pickup.lat), parseFloat(pickup.long));
+        if (detectedZone) {
+            zone_id = detectedZone.id;
+        }
+    }
+
+    console.log(`[ORDER CREATION] Created order: tracking_id=${tracking_id}, coordinates=[lat=${pickup?.lat}, long=${pickup?.long}], resolved zone_id=${zone_id}`);
+
+    return await orderRepository.create({ ...orderData, client_id, tracking_id, currency, delivery_fee, zone_id });
 };
 
 const bulkCreateOrders = async (client_id, fileBuffer) => {
@@ -141,6 +157,16 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
                 }
                 rawOrderData.delivery_fee = delivery_fee;
 
+                // Automatically resolve zone_id based on pickup address coordinates
+                let zone_id = rawOrderData.zone_id || null;
+                if (!zone_id && rawOrderData.pickup_address && rawOrderData.pickup_address.lat && rawOrderData.pickup_address.long) {
+                    const detectedZone = await zoneService.findZoneForCoordinates(rawOrderData.pickup_address.lat, rawOrderData.pickup_address.long);
+                    if (detectedZone) {
+                        zone_id = detectedZone.id;
+                    }
+                }
+                rawOrderData.zone_id = zone_id;
+
                 const { value: validatedData, error } = orderBodySchema.validate(rawOrderData);
                 if (error) {
                     rowErrors.push(...error.details.map(d => d.message));
@@ -148,6 +174,7 @@ const bulkCreateOrders = async (client_id, fileBuffer) => {
 
                 if (rowErrors.length === 0) {
                     const tracking_id = 'TRX' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                    console.log(`[ORDER CREATION] Created bulk order: tracking_id=${tracking_id}, coordinates=[lat=${rawOrderData.pickup_address.lat}, long=${rawOrderData.pickup_address.long}], resolved zone_id=${zone_id}`);
                     const created = await orderRepository.create({ ...validatedData, client_id, tracking_id }, client);
                     createdOrders.push(created);
                 }

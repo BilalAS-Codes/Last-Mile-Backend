@@ -3,6 +3,7 @@ const zoneService = require('./zone.service');
 const createZone = async (req, res) => {
     try {
         const { name, coordinates } = req.body;
+        console.log(`[ZONE CREATION] Creating zone "${name}" with coordinates:`, JSON.stringify(coordinates));
         const newZone = await zoneService.createZone({ name, coordinates });
         return res.status(201).json({
             success: true,
@@ -70,7 +71,7 @@ const assignDriver = async (req, res) => {
             });
         }
 
-        const assignments = await zoneService.assignDriverToZones(driverId, zoneIds);
+        const assignments = await zoneService.assignDriverToZonesWithAvailability(driverId, zoneIds);
         return res.status(200).json({
             success: true,
             message: 'Driver assigned to zones successfully',

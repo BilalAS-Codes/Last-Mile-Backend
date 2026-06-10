@@ -31,6 +31,7 @@ const orderBodySchema = Joi.object({
     cod_amount: Joi.number().when('is_cod', { is: true, then: Joi.required(), otherwise: Joi.optional() }).messages({
         'any.required': 'COD amount is required when order is COD'
     }),
+    zone_id: Joi.string().uuid().optional().allow(null),
 }).options({ stripUnknown: true });
 
 const createOrderSchema = Joi.object({

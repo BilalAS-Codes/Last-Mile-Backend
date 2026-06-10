@@ -21,7 +21,20 @@ const getDriverLocationSchema = Joi.object({
   })
 });
 
+const updateAssignmentStrategySchema = Joi.object({
+  body: Joi.object({
+    strategy: Joi.string().valid('fifo', 'nearest', 'zone').required().messages({
+      "any.required": "Strategy is required",
+      "any.only": "Strategy must be one of: fifo, nearest, zone"
+    }),
+    order_clubbing: Joi.boolean().optional(),
+    clubbing_distance: Joi.number().min(0).optional(),
+    clubbing_time_difference: Joi.number().min(0).optional()
+  })
+});
+
 module.exports = {
   updateLocationSchema,
-  getDriverLocationSchema
+  getDriverLocationSchema,
+  updateAssignmentStrategySchema
 };

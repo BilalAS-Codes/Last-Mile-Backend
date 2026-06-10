@@ -15,7 +15,6 @@ const findByPhone = async (phone) => {
 const findById = async (id) => {
     const query = 'SELECT id, email, phone, role, name, company_details, vehicle_number, vehicle_type, rating, active, currency, included_distance, extra_distance_fee FROM users WHERE id = $1';
     const result = await db.query(query, [id]);
-    console.log(result, 'result')
     return result.rows[0];
 };
 
